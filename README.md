@@ -1,3 +1,10 @@
+<p align="center">
+<img src="https://github.com/vdaburon/har-to-jmeter-convertor/blob/main/doc/har_convertor_logo.png" alt="har to jmeter convertor tool logo"/>
+
+  <p align="center">Convert a HAR file to a JMeter script and a Record XML file.</p>
+  <p align="center"><a href="https://github.com/vdaburon/har-to-jmeter-convertor">Link to github project har-to-jmeter-convertor</a></p>
+</p>
+
 # har-to-jmeter-convertor
 # Convert a HAR file to a JMeter script and a Record XML file.
 

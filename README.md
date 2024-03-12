@@ -36,16 +36,18 @@ Parameters are :
   e.g. record_out = record.xml
 * filter_include,  the regular expression matches the URL to Include <br/>
     * default all = empty (no filter)
-    * e.g. filter_include = https://mysite.com/.*
+    * e.g. filter_include=https://mysite.com/.*
 * filter_exclude,  the regular expression matches the URL to Exclude <br/>
     * default all = empty (no filter)
-    * e.g. filter_exclude = https://notmysite.com/.*
+    * e.g. filter_exclude=https://notmysite.com/.*
+    * or filter statics, filter_exclude=(?i).*\.(bmp|css|js|gif|ico|jpe?g|png|swf|eot|otf|ttf|mp4|woff|woff2)
 * add_pause boolean, use with parameter  new_tc_pause (default true), add Flow Control Action Pause
 * new_tc_pause time between 2 urls to create a new page (Transaction Controller) <br/>
     * e.g. 5000 for 5 sec between 2 urls
 * remove_cookie, remove header with cookie because use a Cookie Manager (default true)
 * remove_cache_request, remove request cache header because use a Cache Manager (default true)
-
+* page_start_number, set the start page number for partial recording (default 1, must be an integer > 0)
+* sampler_start_number, set the start sampler number for partial recording (default 1, must be an integer > 0)
 
 ## Command line tool (CLI)
 This tool could be use with script shell Windows or Linux.
@@ -57,7 +59,8 @@ C:\apache-jmeter\bin&gt;java -jar har-to-jmeter-convertor-1.0-jar-with-dependenc
 
 usage: io.github.vdaburon.jmeter.har.HarForJMeter [-add_pause &lt;add_pause&gt;] [-filter_exclude &lt;filter_exclude&gt;]
        [-filter_include &lt;filter_include&gt;] -har_in &lt;har_in&gt; [-help] -jmx_out &lt;jmx_out&gt; [-new_tc_pause &lt;new_tc_pause&gt;]
-       [-record_out &lt;record_out&gt;] [-remove_cache_request &lt;remove_cache_request&gt;] [-remove_cookie &lt;remove_cookie&gt;]
+       [-page_start_number &lt;page_start_number&gt;] [-record_out &lt;record_out&gt;] [-remove_cache_request
+       &lt;remove_cache_request&gt;] [-remove_cookie &lt;remove_cookie&gt;] [-sampler_start_number &lt;sampler_start_number&gt;]
 io.github.vdaburon.jmeter.har.HarForJMeter
  -add_pause &lt;add_pause&gt;                         Optional boolean, add Flow Control Action Pause after Transaction
                                                 Controller (default true)
@@ -70,22 +73,25 @@ io.github.vdaburon.jmeter.har.HarForJMeter
                                                 jmeter property : proxy.pause, need to be &gt; 0 if set. Usefully for Har
                                                 created by Firefox or Single Page Application (Angular, ReactJS, VuesJS
                                                 ...)
+ -page_start_number &lt;page_start_number&gt;         Optional, the start page number for partial recording (default 1)
  -record_out &lt;record_out&gt;                       Optional, file xml contains exchanges likes recorded by JMeter
  -remove_cache_request &lt;remove_cache_request&gt;   Optional boolean, remove cache header in the http request (default true
                                                 because add a Cache Manager)
  -remove_cookie &lt;remove_cookie&gt;                 Optional boolean, remove cookie in http header (default true because add
                                                 a Cookie Manager)
+ -sampler_start_number &lt;sampler_start_number&gt;   Optional, the start sampler number for partial recording (default 1)
 E.g : java -jar har-for-jmeter-&lt;version&gt;-jar-with-dependencies.jar -har_in myhar.har -jmx_out scriptout.jmx
 -new_tc_pause 5000 -add_pause true -filter_include "https://mysite/.*" -filter_exclude "https://notmysite/*"
+-page_start_number 50 -sampler_start_number 250
 </pre>
 
 
 <pre>
-C:\apache-jmeter\bin>java -jar har-to-jmeter-convertor-1.0-jar-with-dependencies.jar -har_in "myhar.har" -jmx_out "script_out.jmx" -filter_include "https://mysite.com/.*" -filter_exclude "https://notmysite.com/.*" -add_pause true -new_tc_pause 5000
+C:\apache-jmeter\bin>java -jar har-to-jmeter-convertor-2.0-jar-with-dependencies.jar -har_in "myhar.har" -jmx_out "script_out.jmx" -filter_include "https://mysite.com/.*" -filter_exclude "https://notmysite.com/.*" -add_pause true -new_tc_pause 5000
 </pre>
 
 <pre>
-/var/opt/apache-jmeter/bin>java -jar har-to-jmeter-convertor-1.0-jar-with-dependencies.jar -har_in "myhar.har" -jmx_out "script_out.jmx" -record_out "record.xml" -add_pause true -new_tc_pause 5000
+/var/opt/apache-jmeter/bin>java -jar har-to-jmeter-convertor-2.0-jar-with-dependencies.jar -har_in "myhar.har" -jmx_out "script_out.jmx" -record_out "record.xml" -add_pause true -new_tc_pause 5000
 </pre>
 
 ## Usage Maven
@@ -94,7 +100,9 @@ The maven groupId, artifactId and version, this plugin is in the **Maven Central
 ```xml
 <groupId>io.github.vdaburon</groupId>
 <artifactId>har-to-jmeter-convertor</artifactId>
-<version>1.0</version>
+<version>2.0</version>
 ```
 ## Versions
-version 1.0 date 2024-03-11, First Release
+version 2.0 date 2024-03-12, for POST multipart/form-data don't put the content of the file in the Record.xml file because binary content could be large and not XML compatible, add parameters : page_start_number and sampler_start_number to facilitate partial recording of website navigation.
+
+version 1.0 date 2024-03-11, First Release.

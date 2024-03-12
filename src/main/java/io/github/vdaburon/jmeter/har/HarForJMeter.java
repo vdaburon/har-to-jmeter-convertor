@@ -58,6 +58,9 @@ public class HarForJMeter {
     public static final String K_RECORD_FILE_OUT_OPT = "record_out";
     public static final String K_REMOVE_COOKIE_OPT = "remove_cookie";
     public static final String K_REMOVE_CACHE_REQUEST_OPT = "remove_cache_request";
+    public static final String K_PAGE_START_NUMBER = "page_start_number";
+    public static final String K_SAMPLER_START_NUMBER = "sampler_start_number";
+
     private static final Logger LOGGER = Logger.getLogger(HarForJMeter.class.getName());
 
     public static final String APPLICATION_VERSION="1.0";
@@ -72,6 +75,9 @@ public class HarForJMeter {
         String recordXmlOut = "";
         boolean isRemoveCookie = true;
         boolean isRemoveCacheRequest = true;
+        int pageStartNumber = 1;
+        int samplerStartNumber = 1;
+
 
         long lStart = System.currentTimeMillis();
         LOGGER.info("Start main");
@@ -137,6 +143,33 @@ public class HarForJMeter {
         if (sTmp != null) {
             isRemoveCacheRequest= Boolean.parseBoolean(sTmp);
         }
+
+        sTmp = (String) parseProperties.get(K_PAGE_START_NUMBER);
+        if (sTmp != null) {
+            try {
+                pageStartNumber = Integer.parseInt(sTmp);
+            } catch (Exception ex) {
+                LOGGER.warning("Error parsing long parameter " + K_PAGE_START_NUMBER + ", value = " + sTmp + ", set to 1 (default)");
+                pageStartNumber = 1;
+            }
+        }
+        if (pageStartNumber <= 0) {
+            pageStartNumber = 1;
+        }
+
+        sTmp = (String) parseProperties.get(K_SAMPLER_START_NUMBER);
+        if (sTmp != null) {
+            try {
+                samplerStartNumber = Integer.parseInt(sTmp);
+            } catch (Exception ex) {
+                LOGGER.warning("Error parsing long parameter " + K_SAMPLER_START_NUMBER + ", value = " + sTmp + ", set to 1 (default)");
+                samplerStartNumber = 1;
+            }
+        }
+        if (samplerStartNumber <= 0) {
+            samplerStartNumber = 1;
+        }
+
         HarForJMeter harForJMeter = new HarForJMeter();
         LOGGER.info("************* PARAMETERS ***************");
         LOGGER.info(K_HAR_IN_OPT + ", harFile=" + harFile);
@@ -148,10 +181,12 @@ public class HarForJMeter {
         LOGGER.info(K_REGEX_FILTER_EXCLUDE_OPT + ", urlFilterToExclude=" + urlFilterToExclude);
         LOGGER.info(K_REMOVE_COOKIE_OPT + ", isRemoveCookie=" + isRemoveCookie);
         LOGGER.info(K_REMOVE_CACHE_REQUEST_OPT + ", isRemoveCacheRequest=" + isRemoveCacheRequest);
+        LOGGER.info(K_PAGE_START_NUMBER + ", pageStartNumber=" + pageStartNumber);
+        LOGGER.info(K_SAMPLER_START_NUMBER + ", samplerStartNumber=" + samplerStartNumber);
 
         LOGGER.info("***************************************");
         try {
-            generateJmxAndRecord(harFile,  jmxOut,createNewTransactionAfterRequestMs,isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude, recordXmlOut);
+            generateJmxAndRecord(harFile,  jmxOut,createNewTransactionAfterRequestMs,isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude, recordXmlOut, pageStartNumber, samplerStartNumber);
 
             long lEnd = System.currentTimeMillis();
             long lDurationMs = lEnd - lStart;
@@ -171,7 +206,7 @@ public class HarForJMeter {
         }
     }
 
-    public static void generateJmxAndRecord(String harFile, String jmxOut, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude, String recordXmlOut) throws HarReaderException, MalformedURLException, ParserConfigurationException, URISyntaxException, TransformerException {
+    public static void generateJmxAndRecord(String harFile, String jmxOut, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude, String recordXmlOut, int pageStartNumber, int samplerStartNumber) throws HarReaderException, MalformedURLException, ParserConfigurationException, URISyntaxException, TransformerException {
         HarForJMeter harForJMeter = new HarForJMeter();
 
         Har har = harForJMeter.loadHarFile(harFile);
@@ -183,12 +218,12 @@ public class HarForJMeter {
         LOGGER.info(harCreator);
 
         LOGGER.info("************ Start of JMX file creation (JMeter script file) **");
-        harForJMeter.convertHarToJmx(har, jmxOut, createNewTransactionAfterRequestMs, isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude);
+        harForJMeter.convertHarToJmx(har, jmxOut, createNewTransactionAfterRequestMs, isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude, pageStartNumber, samplerStartNumber);
         LOGGER.info("************ End of JMX file creation              ************");
 
         if (!recordXmlOut.isEmpty()) {
             LOGGER.info("************ Start of Recording XML file creation ************");
-            harForJMeter.harToRecordXml(har, recordXmlOut, urlFilterToInclude, urlFilterToExclude);
+            harForJMeter.harToRecordXml(har, recordXmlOut, urlFilterToInclude, urlFilterToExclude, pageStartNumber, samplerStartNumber);
             LOGGER.info("************ End of Recording XML file creation   ************");
         }
     }
@@ -198,17 +233,17 @@ public class HarForJMeter {
         return har;
     }
 
-    protected void convertHarToJmx(Har har, String jmxXmlOutFile, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude) throws ParserConfigurationException, TransformerException, URISyntaxException, MalformedURLException {
+    protected void convertHarToJmx(Har har, String jmxXmlOutFile, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude, int pageStartNumber, int samplerStartNumber) throws ParserConfigurationException, TransformerException, URISyntaxException, MalformedURLException {
         XmlJmx xmlJmx = new XmlJmx();
-        Document jmxDocument = xmlJmx.convertHarToJmxXml(har, createNewTransactionAfterRequestMs, isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude);
+        Document jmxDocument = xmlJmx.convertHarToJmxXml(har, createNewTransactionAfterRequestMs, isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude, pageStartNumber, samplerStartNumber);
 
         xmlJmx.saveXmFile(jmxDocument, jmxXmlOutFile);
 
     }
 
-    protected void harToRecordXml(Har har, String jmxXmlOutFile, String urlFilterToInclude, String urlFilterToExclude) throws ParserConfigurationException, TransformerException, URISyntaxException, MalformedURLException {
+    protected void harToRecordXml(Har har, String jmxXmlOutFile, String urlFilterToInclude, String urlFilterToExclude, int pageStartNumber, int samplerStartNumber) throws ParserConfigurationException, TransformerException, URISyntaxException, MalformedURLException {
         Har2TestResultsXml har2TestResultsXml = new Har2TestResultsXml();
-        Document jmxDocument = har2TestResultsXml.convertHarToTestResultXml(har, urlFilterToInclude, urlFilterToExclude);
+        Document jmxDocument = har2TestResultsXml.convertHarToTestResultXml(har, urlFilterToInclude, urlFilterToExclude, samplerStartNumber);
 
         XmlJmx.saveXmFile(jmxDocument, jmxXmlOutFile);
 
@@ -221,7 +256,7 @@ public class HarForJMeter {
         List<HarPostDataParam> listParams = new ArrayList<>();
 
         String boundary = StringUtils.substringAfter(mimeType,"boundary=");
-        LOGGER.fine("boudary=<" + boundary + ">");
+        LOGGER.fine("boundary=<" + boundary + ">");
         String text = harPostData.getText();
         String[] tabParams = StringUtils.splitByWholeSeparator(text,"--" + boundary + "\r\n");
         LOGGER.info("tabParams.length=" + tabParams.length);
@@ -315,6 +350,19 @@ public class HarForJMeter {
                 .build();
         options.addOption(recordFileOutOpt);
 
+        Option pageStartNumberOpt = Option.builder(K_PAGE_START_NUMBER).argName(K_PAGE_START_NUMBER).hasArg(true)
+                .required(false)
+                .desc("Optional, the start page number for partial recording (default 1)")
+                .build();
+        options.addOption(pageStartNumberOpt);
+
+        Option samplerStartNumberOpt = Option.builder(K_SAMPLER_START_NUMBER).argName(K_SAMPLER_START_NUMBER).hasArg(true)
+                .required(false)
+                .desc("Optional, the start sampler number for partial recording (default 1)")
+                .build();
+        options.addOption(samplerStartNumberOpt);
+
+
         return options;
     }
 
@@ -367,13 +415,22 @@ public class HarForJMeter {
             properties.setProperty(K_RECORD_FILE_OUT_OPT, line.getOptionValue(K_RECORD_FILE_OUT_OPT));
         }
 
+        if (line.hasOption(K_PAGE_START_NUMBER)) {
+            properties.setProperty(K_PAGE_START_NUMBER, line.getOptionValue(K_PAGE_START_NUMBER));
+        }
+
+        if (line.hasOption(K_SAMPLER_START_NUMBER)) {
+            properties.setProperty(K_SAMPLER_START_NUMBER, line.getOptionValue(K_SAMPLER_START_NUMBER));
+        }
+
         return properties;
     }
 
     private static void helpUsage(Options options) {
         HelpFormatter formatter = new HelpFormatter();
         String footer = "E.g : java -jar har-for-jmeter-<version>-jar-with-dependencies.jar -" + K_HAR_IN_OPT + " myhar.har -" + K_JMETER_FILE_OUT_OPT + " scriptout.jmx -"
-                + K_CREATE_NEW_TC_AFTER_MS_OPT + " 5000 -" + K_ADD_PAUSE_OPT + " true -" + K_REGEX_FILTER_INCLUDE_OPT + " \"https://mysite/.*\" -" + K_REGEX_FILTER_EXCLUDE_OPT + " \"https://notmysite/*\" \n";
+                + K_CREATE_NEW_TC_AFTER_MS_OPT + " 5000 -" + K_ADD_PAUSE_OPT + " true -" + K_REGEX_FILTER_INCLUDE_OPT + " \"https://mysite/.*\" -" + K_REGEX_FILTER_EXCLUDE_OPT + " \"https://notmysite/*\" -"
+                + K_PAGE_START_NUMBER + " 50 -" + K_SAMPLER_START_NUMBER + " 250 \n";
 
         formatter.printHelp(120, HarForJMeter.class.getName(),
                 HarForJMeter.class.getName(), options, footer, true);

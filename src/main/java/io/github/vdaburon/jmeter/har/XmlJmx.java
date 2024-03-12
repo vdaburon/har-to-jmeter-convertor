@@ -62,7 +62,7 @@ public class XmlJmx {
     private static final String K_JMETER_VERSION = "5.6.3";
     private static final String K_THREAD_GROUP_NAME = "Thead Group HAR Imported";
     private static final Logger LOGGER = Logger.getLogger(XmlJmx.class.getName());
-    protected Document convertHarToJmxXml(Har har, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude) throws ParserConfigurationException, URISyntaxException, MalformedURLException {
+    protected Document convertHarToJmxXml(Har har, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude, int pageStartNumber, int samplerStartNumber) throws ParserConfigurationException, URISyntaxException, MalformedURLException {
 
         Pattern patternUrlInclude = null;
         if (!urlFilterToInclude.isEmpty()) {
@@ -141,8 +141,8 @@ public class XmlJmx {
         if (createNewTransactionAfterRequestMs > 0 && lPages.size() == 1)  {
             isCreateNewTransactionAfterRequestMs = true;
         }
-        int pageNum = 1;
-        int httpSamplernum = 1;
+        int pageNum = pageStartNumber;
+        int httpSamplernum = samplerStartNumber;
         for (int p = 0; p < lPages.size(); p++) {
             HarPage pageInter = lPages.get(p);
             String pageId = pageInter.getId();

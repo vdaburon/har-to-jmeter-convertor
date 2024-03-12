@@ -48,7 +48,7 @@ import java.util.regex.Pattern;
 public class Har2TestResultsXml {
     private static final Logger LOGGER = Logger.getLogger(Har2TestResultsXml.class.getName());
 
-    protected Document convertHarToTestResultXml(Har har, String urlFilterToInclude, String urlFilterToExclude) throws ParserConfigurationException, URISyntaxException, MalformedURLException {
+    protected Document convertHarToTestResultXml(Har har, String urlFilterToInclude, String urlFilterToExclude, int samplerStartNumber) throws ParserConfigurationException, URISyntaxException, MalformedURLException {
 
         Pattern patternUrlInclude = null;
         if (!urlFilterToInclude.isEmpty()) {
@@ -66,12 +66,12 @@ public class Har2TestResultsXml {
 
         Document document = documentBuilder.newDocument();
 
-        Element eltTestResults = createTestResults(har, document, patternUrlInclude, patternUrlExclude);
+        Element eltTestResults = createTestResults(har, document, patternUrlInclude, patternUrlExclude, samplerStartNumber);
         document.appendChild(eltTestResults);
         return document;
     }
 
-    protected Element createTestResults(Har har, Document document, Pattern patternUrlInclude, Pattern patternUrlExclude) throws MalformedURLException, URISyntaxException {
+    protected Element createTestResults(Har har, Document document, Pattern patternUrlInclude, Pattern patternUrlExclude, int samplerStartNumber) throws MalformedURLException, URISyntaxException {
         Element eltTestResults = document.createElement("testResults");
         Attr attrTrversion = document.createAttribute("version");
         attrTrversion.setValue("1.2");
@@ -79,7 +79,7 @@ public class Har2TestResultsXml {
 
         List<HarEntry> lEntries = har.getLog().getEntries();
         String currentUrl = "";
-        int num = 1;
+        int num = samplerStartNumber;
         for (int e = 0; e < lEntries.size(); e++) {
             HarEntry harEntryInter = lEntries.get(e);
 
@@ -390,7 +390,35 @@ public class Har2TestResultsXml {
             isParamAdd = true;
         }
         if (mimeType != null && mimeType.contains("multipart/form-data")) {
-            sb.append(postData.getText());
+            HarPostData postDataFormData = HarForJMeter.extractParamsFromMultiPart(harRequest);
+            String boundary = StringUtils.substringAfter(mimeType,"boundary=");
+            LOGGER.fine("boundary=<" + boundary + ">");
+            List<HarPostDataParam> listParams  = postDataFormData.getParams();
+            StringBuffer sbFormData = new StringBuffer(1024);
+            for (int j = 0; j < listParams.size(); j++) {
+                HarPostDataParam harPostDataParamInter = listParams.get(j);
+                String fileName = harPostDataParamInter.getFileName();
+                String contentType = harPostDataParamInter.getContentType();
+                String nameParam = harPostDataParamInter.getName();
+                String valueParam = harPostDataParamInter.getValue();
+
+                sbFormData.append(boundary + "\n");
+                sbFormData.append("Content-Disposition: form-data; name=\"");
+                sbFormData.append(nameParam + "\"");
+                if (fileName != null) {
+                    sbFormData.append("; filename=\"" + fileName + "\"\n");
+                    sbFormData.append("Content-Type: " + contentType + "\n");
+                    sbFormData.append("\n\n");
+                    sbFormData.append("<actual file content, not shown here>");
+                    sbFormData.append("\n");
+                } else {
+                    sbFormData.append("\n\n");
+                    sbFormData.append(valueParam);
+                    sbFormData.append("\n");
+                }
+            }
+            sb.append(sbFormData);
+            // sb.append(postData.getText()); // not the text because may contain binary from the upload file (e.g. PDF or DOCX ...)
             isParamAdd = true;
         }
 

@@ -236,7 +236,8 @@ public class Har2TestResultsXml {
         String rc_response = "" + harResponse.getStatus();
         String rm_response = harResponse.getStatusText();
 
-        String dt_response = textFromMimeType(harContent.getMimeType());
+        String urlPath = urlRequest.getPath();
+        String dt_response = textFromMimeType(harContent.getMimeType(), urlPath);
         /* encoding
         "response": {
             "status": 200,
@@ -477,11 +478,47 @@ public class Har2TestResultsXml {
         return isText;
     }
 
-    public static String textFromMimeType(String mimeType) {
+    public static String textFromMimeType(String mimeType, String urlPath) {
         String sText = "text";
 
         if (!isTextFromMimeType(mimeType)) {
             sText = "bin";
+        }
+
+        if("text".equals(sText) && urlPath.contains(".")) {
+            // some time the mime type is incorrect so use extension to find if the content is text or bin
+            String extension = urlPath.substring(urlPath.lastIndexOf(".") + 1);
+            if (extension != null && !extension.isEmpty()) {
+                extension = extension.toLowerCase();
+
+                switch (extension) {
+                    case "bmp":
+                    case "gif":
+                    case "ico":
+                    case "jpg":
+                    case "jpeg":
+                    case "png":
+                    case "swf":
+                    case "eot":
+                    case "otf":
+                    case "ttf":
+                    case "mp3":
+                    case "mp4":
+                    case "avi":
+                    case "mkv":
+                    case "wav":
+                    case "woff":
+                    case "woff2":
+                    case "docx":
+                    case "doc":
+                    case "odt":
+                    case "pptx":
+                    case "xlsx":
+                    case "xls":
+                    case "vsdx":
+                        sText = "bin";
+                }
+            }
         }
         return sText;
     }

@@ -100,9 +100,11 @@ The maven groupId, artifactId and version, this plugin is in the **Maven Central
 ```xml
 <groupId>io.github.vdaburon</groupId>
 <artifactId>har-to-jmeter-convertor</artifactId>
-<version>2.0</version>
+<version>2.1</version>
 ```
 ## Versions
-version 2.0 date 2024-03-12, for POST multipart/form-data don't put the content of the file in the Record.xml file because binary content could be large and not XML compatible, add parameters : page_start_number and sampler_start_number to facilitate partial recording of website navigation.
+Version 2.1 date 2024-03-13, change the version in the code and the comment for the test plan. Use the extension to find is response is text or bin.
 
-version 1.0 date 2024-03-11, First Release.
+Version 2.0 date 2024-03-12, for POST multipart/form-data don't put the content of the file in the Record.xml file because binary content could be large and not XML compatible, add parameters : page_start_number and sampler_start_number to facilitate partial recording of website navigation.
+
+Version 1.0 date 2024-03-11, First Release.

@@ -942,7 +942,12 @@ public class XmlJmx {
                     attrElementPropelementType.setValue("HTTPArgument");
                     elementProp.setAttributeNode(attrElementPropelementType);
 
-                    Element boolProp1 = createProperty(document, "boolProp", "HTTPArgument.always_encode", "false");
+                    boolean isNeedEncode = false;
+                    if (paramValue.contains(" ") || paramValue.contains("=") || paramValue.contains("/") || paramValue.contains("+")) {
+                        isNeedEncode = true;
+                    }
+
+                    Element boolProp1 = createProperty(document, "boolProp", "HTTPArgument.always_encode", "" + isNeedEncode);
                     elementProp.appendChild(boolProp1);
 
                     Element stringProp2 = createProperty(document, "stringProp", "Argument.name", paramName);
@@ -1080,7 +1085,7 @@ public class XmlJmx {
                 String paramValue = queryParam.getValue();
 
                 boolean isNeedEncode = false;
-                if (paramValue.contains(" ") || paramValue.contains("=")) {
+                if (paramValue.contains(" ") || paramValue.contains("=") || paramValue.contains("/") || paramValue.contains("/") || paramValue.contains("+")) {
                     isNeedEncode = true;
                 }
 

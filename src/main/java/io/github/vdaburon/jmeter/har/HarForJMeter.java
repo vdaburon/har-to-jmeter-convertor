@@ -174,7 +174,7 @@ public class HarForJMeter {
         LOGGER.info("************* PARAMETERS ***************");
         LOGGER.info(K_HAR_IN_OPT + ", harFile=" + harFile);
         LOGGER.info(K_JMETER_FILE_OUT_OPT + ", jmxOut=" + jmxOut);
-        LOGGER.info(K_RECORD_FILE_OUT_OPT + ", recordXmlOut=" + jmxOut);
+        LOGGER.info(K_RECORD_FILE_OUT_OPT + ", recordXmlOut=" + recordXmlOut);
         LOGGER.info(K_CREATE_NEW_TC_AFTER_MS_OPT + ", createNewTransactionAfterRequestMs=" + createNewTransactionAfterRequestMs);
         LOGGER.info(K_ADD_PAUSE_OPT + ", isAddPause=" + isAddPause);
         LOGGER.info(K_REGEX_FILTER_INCLUDE_OPT + ", urlFilterToInclude=" + urlFilterToInclude);

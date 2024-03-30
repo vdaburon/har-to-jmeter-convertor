@@ -55,7 +55,7 @@ This tool could be use with script shell Windows or Linux.
 Help to see all parameters :
 
 <pre>
-C:\apache-jmeter\bin&gt;java -jar har-to-jmeter-convertor-2.2-jar-with-dependencies.jar -help
+C:\apache-jmeter\bin&gt;java -jar har-to-jmeter-convertor-2.3-jar-with-dependencies.jar -help
 
 usage: io.github.vdaburon.jmeter.har.HarForJMeter [-add_pause &lt;add_pause&gt;] [-filter_exclude &lt;filter_exclude&gt;]
        [-filter_include &lt;filter_include&gt;] -har_in &lt;har_in&gt; [-help] -jmx_out &lt;jmx_out&gt; [-new_tc_pause &lt;new_tc_pause&gt;]
@@ -87,11 +87,11 @@ E.g : java -jar har-for-jmeter-&lt;version&gt;-jar-with-dependencies.jar -har_in
 
 
 <pre>
-C:\apache-jmeter\bin>java -jar har-to-jmeter-convertor-2.2-jar-with-dependencies.jar -har_in "myhar.har" -jmx_out "script_out.jmx" -filter_include "https://mysite.com/.*" -filter_exclude "https://notmysite.com/.*" -add_pause true -new_tc_pause 5000
+C:\apache-jmeter\bin>java -jar har-to-jmeter-convertor-2.3-jar-with-dependencies.jar -har_in "myhar.har" -jmx_out "script_out.jmx" -filter_include "https://mysite.com/.*" -filter_exclude "https://notmysite.com/.*" -add_pause true -new_tc_pause 5000
 </pre>
 
 <pre>
-/var/opt/apache-jmeter/bin>java -jar har-to-jmeter-convertor-2.2-jar-with-dependencies.jar -har_in "myhar.har" -jmx_out "script_out.jmx" -record_out "record.xml" -add_pause true -new_tc_pause 5000
+/var/opt/apache-jmeter/bin>java -jar har-to-jmeter-convertor-2.3-jar-with-dependencies.jar -har_in "myhar.har" -jmx_out "script_out.jmx" -record_out "record.xml" -add_pause true -new_tc_pause 5000
 </pre>
 
 ## Usage Maven
@@ -100,10 +100,12 @@ The maven groupId, artifactId and version, this plugin is in the **Maven Central
 ```xml
 <groupId>io.github.vdaburon</groupId>
 <artifactId>har-to-jmeter-convertor</artifactId>
-<version>2.2</version>
+<version>2.3</version>
 ```
 ## Versions
-Version 2.2 date 2024-03-30, remove the header 'Content-length' because the length is computed by JMeter when the request is created. POST or PUT could have query string and body with content so add query string to the path. Set Content Encoding to UFT-8 for POST or PUT method and request Content-Type : application/json. Add body data content in Record.xml for PUT and PATCH methods.
+Version 2.3 date 2024-03-30, encode value for x-www-form-urlencoded when value contains space ' ' or equal '=' or slash '/' or plus '+' characters. Correct add the content for body data for POST, PUT or PATCH if not x-www-form-urlencoded in the Record.xml file.
+
+Version 2.2 date 2024-03-29, remove the header 'Content-length' because the length is computed by JMeter when the request is created. POST or PUT could have query string and body with content so add query string to the path. Set Content Encoding to UFT-8 for POST or PUT method and request Content-Type : application/json. Add body data content in Record.xml for PUT and PATCH methods.
 
 Version 2.1 date 2024-03-13, change the version in the code and the comment for the test plan. Use the extension to find is response is text or bin.
 

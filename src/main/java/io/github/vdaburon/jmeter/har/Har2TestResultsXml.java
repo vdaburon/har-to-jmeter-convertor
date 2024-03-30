@@ -156,7 +156,8 @@ public class Har2TestResultsXml {
         Element eltqueryString = document.createElement("queryString");
         eltqueryString = addAttributeToElement(document, eltqueryString, "class", "java.lang.String");
         String queryString = "";
-        if (harRequest.getQueryString().size() > 0) {
+        if (!("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method) || "PATCH".equalsIgnoreCase(method)) &&
+                harRequest.getQueryString().size() > 0) {
             queryString = new URI(harRequest.getUrl()).getQuery();
         } else {
             if ("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method) || "PATCH".equalsIgnoreCase(method)) {
@@ -390,7 +391,8 @@ public class Har2TestResultsXml {
             }
             isParamAdd = true;
         }
-        if (mimeType != null && mimeType.contains("multipart/form-data")) {
+
+        if (isParamAdd == false && mimeType != null && mimeType.contains("multipart/form-data")) {
             HarPostData postDataFormData = HarForJMeter.extractParamsFromMultiPart(harRequest);
             String boundary = StringUtils.substringAfter(mimeType,"boundary=");
             LOGGER.fine("boundary=<" + boundary + ">");

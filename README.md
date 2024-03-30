@@ -55,7 +55,7 @@ This tool could be use with script shell Windows or Linux.
 Help to see all parameters :
 
 <pre>
-C:\apache-jmeter\bin&gt;java -jar har-to-jmeter-convertor-1.0-jar-with-dependencies.jar -help
+C:\apache-jmeter\bin&gt;java -jar har-to-jmeter-convertor-2.2-jar-with-dependencies.jar -help
 
 usage: io.github.vdaburon.jmeter.har.HarForJMeter [-add_pause &lt;add_pause&gt;] [-filter_exclude &lt;filter_exclude&gt;]
        [-filter_include &lt;filter_include&gt;] -har_in &lt;har_in&gt; [-help] -jmx_out &lt;jmx_out&gt; [-new_tc_pause &lt;new_tc_pause&gt;]
@@ -87,11 +87,11 @@ E.g : java -jar har-for-jmeter-&lt;version&gt;-jar-with-dependencies.jar -har_in
 
 
 <pre>
-C:\apache-jmeter\bin>java -jar har-to-jmeter-convertor-2.0-jar-with-dependencies.jar -har_in "myhar.har" -jmx_out "script_out.jmx" -filter_include "https://mysite.com/.*" -filter_exclude "https://notmysite.com/.*" -add_pause true -new_tc_pause 5000
+C:\apache-jmeter\bin>java -jar har-to-jmeter-convertor-2.2-jar-with-dependencies.jar -har_in "myhar.har" -jmx_out "script_out.jmx" -filter_include "https://mysite.com/.*" -filter_exclude "https://notmysite.com/.*" -add_pause true -new_tc_pause 5000
 </pre>
 
 <pre>
-/var/opt/apache-jmeter/bin>java -jar har-to-jmeter-convertor-2.0-jar-with-dependencies.jar -har_in "myhar.har" -jmx_out "script_out.jmx" -record_out "record.xml" -add_pause true -new_tc_pause 5000
+/var/opt/apache-jmeter/bin>java -jar har-to-jmeter-convertor-2.2-jar-with-dependencies.jar -har_in "myhar.har" -jmx_out "script_out.jmx" -record_out "record.xml" -add_pause true -new_tc_pause 5000
 </pre>
 
 ## Usage Maven

@@ -159,8 +159,8 @@ public class Har2TestResultsXml {
         if (harRequest.getQueryString().size() > 0) {
             queryString = new URI(harRequest.getUrl()).getQuery();
         } else {
-            if ("POST".equalsIgnoreCase(method)) {
-                queryString = createQueryStringForPost(harRequest);
+            if ("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method) || "PATCH".equalsIgnoreCase(method)) {
+                queryString = createQueryStringForPostOrPutOrPatch(harRequest);
             }
         }
         eltqueryString.setTextContent(queryString);
@@ -370,7 +370,7 @@ public class Har2TestResultsXml {
         return eltresponseData;
     }
 
-    protected String createQueryStringForPost(HarRequest harRequest) {
+    protected String createQueryStringForPostOrPutOrPatch(HarRequest harRequest) {
         StringBuffer sb = new StringBuffer(2048);
         HarPostData postData = harRequest.getPostData();
         String mimeType = postData.getMimeType();

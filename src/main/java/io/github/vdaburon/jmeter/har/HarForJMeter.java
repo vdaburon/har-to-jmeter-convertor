@@ -63,7 +63,7 @@ public class HarForJMeter {
 
     private static final Logger LOGGER = Logger.getLogger(HarForJMeter.class.getName());
 
-    public static final String APPLICATION_VERSION="2.1";
+    public static final String APPLICATION_VERSION="2.2";
 
     public static void main(String[] args) {
         String harFile = "";

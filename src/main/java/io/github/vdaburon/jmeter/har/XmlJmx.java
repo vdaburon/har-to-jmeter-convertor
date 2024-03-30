@@ -829,15 +829,37 @@ public class XmlJmx {
         Element stringProp3 = createProperty(document, "stringProp", "HTTPSampler.protocol", schemeInter);
         eltHTTPSamplerProxy.appendChild(stringProp3);
 
+
+        String methodInter = harRequest.getMethod().name();
+
         String contentEncodingInter = "";
+        if ("POST".equalsIgnoreCase(methodInter) || "PUT".equalsIgnoreCase(methodInter) || "PATCH".equalsIgnoreCase(methodInter)) {
+            if (harRequest.getHeaders() != null && harRequest.getHeaders().size() > 0) {
+                for (HarHeader header : harRequest.getHeaders()) {
+                    String headerName = header.getName();
+                    String headerValue = header.getValue();
+                    if ("Content-Type".equalsIgnoreCase(headerName)) {
+                        if ("application/json".equalsIgnoreCase(headerValue)) {
+                            contentEncodingInter = "UTF-8";
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         Element stringProp4 = createProperty(document, "stringProp", "HTTPSampler.contentEncoding", contentEncodingInter);
         eltHTTPSamplerProxy.appendChild(stringProp4);
 
         String pathInter = url.getPath();
+        if ("POST".equalsIgnoreCase(methodInter) || "PUT".equalsIgnoreCase(methodInter) || "PATCH".equalsIgnoreCase(methodInter)) {
+            if (url.getQuery() != null) {
+                pathInter += "?" + url.getQuery();
+            }
+        }
         Element stringProp5 = createProperty(document, "stringProp", "HTTPSampler.path", pathInter);
         eltHTTPSamplerProxy.appendChild(stringProp5);
 
-        String methodInter = harRequest.getMethod().name();
         Element stringProp6 = createProperty(document, "stringProp", "HTTPSampler.method", methodInter);
         eltHTTPSamplerProxy.appendChild(stringProp6);
 
@@ -894,7 +916,7 @@ public class XmlJmx {
         collectionProp.setAttributeNode(attrcollectionPropname);
         boolean isParamAdd = false;
 
-        if (harRequest.getMethod().equals(HttpMethod.POST) || harRequest.getMethod().equals(HttpMethod.PUT)) {
+        if (harRequest.getMethod().equals(HttpMethod.POST) || harRequest.getMethod().equals(HttpMethod.PUT) || harRequest.getMethod().equals(HttpMethod.PATCH)) {
             HarPostData postData = harRequest.getPostData();
             String mimeType = postData.getMimeType();
 
@@ -1047,8 +1069,8 @@ public class XmlJmx {
             }
         }
 
-        if (!(harRequest.getMethod().equals(HttpMethod.POST) || harRequest.getMethod().equals(HttpMethod.PUT))) {
-            // NOT POST or PUT, e.g : DELETE, PATCH, HEAD, OPTIONS, PATCH, PROPFIND
+        if (!(harRequest.getMethod().equals(HttpMethod.POST) || harRequest.getMethod().equals(HttpMethod.PUT) || harRequest.getMethod().equals(HttpMethod.PATCH))) {
+            // NOT POST NOT PUT NOT PATCH, e.g : DELETE HEAD, OPTIONS, PATCH, PROPFIND
 
             Element boolPropPostBodyRaw = createProperty(document, "boolProp", "HTTPSampler.postBodyRaw", "false");
             eltHTTPSamplerProxy.appendChild(boolPropPostBodyRaw);
@@ -1183,6 +1205,10 @@ public class XmlJmx {
                     }
                 }
 
+                if ("Content-Length".equalsIgnoreCase(headerName)) {
+                    // the Content-length is computed by JMeter when the request is created, so remove it
+                    addThisHearder = false;
+                }
 
                 if(addThisHearder) {
                     Element elementProp = createElementProp(document, headerName, "Header", null, null, null);

@@ -23,6 +23,12 @@ import de.sstoehr.harreader.model.HarCreatorBrowser;
 import de.sstoehr.harreader.model.HarPostData;
 import de.sstoehr.harreader.model.HarPostDataParam;
 import de.sstoehr.harreader.model.HarRequest;
+
+import io.github.vdaburon.jmeter.har.external.ManageExternalFile;
+import io.github.vdaburon.jmeter.har.lrwr.HarLrTransactions;
+import io.github.vdaburon.jmeter.har.lrwr.ManageLrwr;
+import io.github.vdaburon.jmeter.har.common.TransactionInfo;
+
 import org.apache.commons.lang3.StringUtils;
 import org.w3c.dom.Document;
 
@@ -46,7 +52,13 @@ import java.util.logging.Logger;
 import java.util.Properties;
 import java.util.regex.PatternSyntaxException;
 
+/**
+ * The main class to read a har file and generate a JMeter script and a Record.xml file
+ */
+
 public class HarForJMeter {
+
+    public static final String APPLICATION_VERSION="5.0";
 
     // CLI OPTIONS
     public static final String K_HAR_IN_OPT = "har_in";
@@ -60,10 +72,11 @@ public class HarForJMeter {
     public static final String K_REMOVE_CACHE_REQUEST_OPT = "remove_cache_request";
     public static final String K_PAGE_START_NUMBER = "page_start_number";
     public static final String K_SAMPLER_START_NUMBER = "sampler_start_number";
+    public static final String K_LRWR_USE_INFOS = "use_lrwr_infos";
+    public static final String K_LRWR_USE_TRANSACTION_NAME = "transaction_name";
+    public static final String K_EXTERNAL_FILE_INFOS = "external_file_infos";
 
     private static final Logger LOGGER = Logger.getLogger(HarForJMeter.class.getName());
-
-    public static final String APPLICATION_VERSION="2.3";
 
     public static void main(String[] args) {
         String harFile = "";
@@ -77,6 +90,8 @@ public class HarForJMeter {
         boolean isRemoveCacheRequest = true;
         int pageStartNumber = 1;
         int samplerStartNumber = 1;
+        String lrwr_info = ""; // for LoadRunner Web Recorder Chrome Extension
+        String fileExternalInfo = ""; // csv file name contains infos like : 2024-05-07T07:56:40.513Z;TRANSACTION;welcome_page;start
 
 
         long lStart = System.currentTimeMillis();
@@ -170,6 +185,22 @@ public class HarForJMeter {
             samplerStartNumber = 1;
         }
 
+        sTmp = (String) parseProperties.get(K_LRWR_USE_INFOS);
+        if (sTmp != null) {
+            lrwr_info= sTmp;
+            if (!lrwr_info.isEmpty() && !K_LRWR_USE_TRANSACTION_NAME.equalsIgnoreCase(sTmp)) {
+                LOGGER.warning("This Parameter " + K_LRWR_USE_INFOS + " is not an expected value, value = " + sTmp + ", set to empty (default)");
+                lrwr_info = "";
+            }
+        } else {
+            lrwr_info = "";
+        }
+
+        sTmp = (String) parseProperties.get(K_EXTERNAL_FILE_INFOS);
+        if (sTmp != null) {
+            fileExternalInfo = sTmp;
+        }
+
         HarForJMeter harForJMeter = new HarForJMeter();
         LOGGER.info("************* PARAMETERS ***************");
         LOGGER.info(K_HAR_IN_OPT + ", harFile=" + harFile);
@@ -183,10 +214,11 @@ public class HarForJMeter {
         LOGGER.info(K_REMOVE_CACHE_REQUEST_OPT + ", isRemoveCacheRequest=" + isRemoveCacheRequest);
         LOGGER.info(K_PAGE_START_NUMBER + ", pageStartNumber=" + pageStartNumber);
         LOGGER.info(K_SAMPLER_START_NUMBER + ", samplerStartNumber=" + samplerStartNumber);
-
+        LOGGER.info(K_LRWR_USE_INFOS + ", lrwr_info=" + lrwr_info);
+        LOGGER.info(K_EXTERNAL_FILE_INFOS + ", fileExternalInfo=" + fileExternalInfo);
         LOGGER.info("***************************************");
         try {
-            generateJmxAndRecord(harFile,  jmxOut,createNewTransactionAfterRequestMs,isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude, recordXmlOut, pageStartNumber, samplerStartNumber);
+            generateJmxAndRecord(harFile,  jmxOut,createNewTransactionAfterRequestMs,isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude, recordXmlOut, pageStartNumber, samplerStartNumber, lrwr_info, fileExternalInfo);
 
             long lEnd = System.currentTimeMillis();
             long lDurationMs = lEnd - lStart;
@@ -206,7 +238,28 @@ public class HarForJMeter {
         }
     }
 
-    public static void generateJmxAndRecord(String harFile, String jmxOut, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude, String recordXmlOut, int pageStartNumber, int samplerStartNumber) throws HarReaderException, MalformedURLException, ParserConfigurationException, URISyntaxException, TransformerException {
+    /**
+     * Create the JMeter script jmx file and the Record.xml file
+     * @param harFile the har file to read
+     * @param jmxOut the JMeter script to create
+     * @param recordXmlOut the record.xml file to open with a Listener View Result Tree
+     * @param createNewTransactionAfterRequestMs how many milliseconds for creating a new Transaction Controller
+     * @param isAddPause do we add Flow Control Action PAUSE ?
+     * @param isRemoveCookie do we remove Cookie information ?
+     * @param isRemoveCacheRequest do we remove the cache information for the Http Request ?
+     * @param urlFilterToInclude the regex filter to include url
+     * @param urlFilterToExclude the regex filter to exclude url
+     * @param pageStartNumber the first page number
+     * @param samplerStartNumber the first http sampler number
+     * @param lrwr_info what information from the HAR do we use ? The transaction_name or empty. For HAR generated with LoadRunner Web Recorder.
+     * @param fileExternalInfo file contains external informations like 2024-05-07T07:56:40.513Z;TRANSACTION;home_page;start
+     * @throws HarReaderException trouble when reading HAR file
+     * @throws MalformedURLException trouble to convert String to a URL
+     * @throws ParserConfigurationException regex expression is incorrect
+     * @throws URISyntaxException trouble to convert String to a URL
+     * @throws TransformerException Megatron we have a problem
+     */
+    public static void generateJmxAndRecord(String harFile, String jmxOut, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude, String recordXmlOut, int pageStartNumber, int samplerStartNumber, String lrwr_info, String fileExternalInfo) throws HarReaderException, MalformedURLException, ParserConfigurationException, URISyntaxException, TransformerException {
         HarForJMeter harForJMeter = new HarForJMeter();
 
         Har har = harForJMeter.loadHarFile(harFile);
@@ -217,8 +270,25 @@ public class HarForJMeter {
         }
         LOGGER.info(harCreator);
 
+        List<TransactionInfo> listTransactionInfo = null;
+        if (K_LRWR_USE_TRANSACTION_NAME.equals(lrwr_info)) {
+            boolean isHarWithLrwr = ManageLrwr.isHarContainsLrwr(harFile);
+            if (isHarWithLrwr) {
+                List<HarLrTransactions> listHarLrTransactions = ManageLrwr.getListTransactionLrwr(harFile);
+                listTransactionInfo = ManageLrwr.createListTransactionInfo(listHarLrTransactions);
+            }
+        }
+
+        if (!fileExternalInfo.isEmpty()) {
+            try {
+                listTransactionInfo = ManageExternalFile.createListTransactionInfo(fileExternalInfo);
+            } catch (Exception e) {
+                LOGGER.severe("Can't read file or content : " + fileExternalInfo + ", exception : " + e.toString());
+            }
+        }
+
         LOGGER.info("************ Start of JMX file creation (JMeter script file) **");
-        harForJMeter.convertHarToJmx(har, jmxOut, createNewTransactionAfterRequestMs, isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude, pageStartNumber, samplerStartNumber);
+        harForJMeter.convertHarToJmx(har, jmxOut, createNewTransactionAfterRequestMs, isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude, pageStartNumber, samplerStartNumber, listTransactionInfo);
         LOGGER.info("************ End of JMX file creation              ************");
 
         if (!recordXmlOut.isEmpty()) {
@@ -228,19 +298,56 @@ public class HarForJMeter {
         }
     }
 
+    /**
+     * Load the har file and return the HAR object
+     * @param fileHar the har to read
+     * @return the HAR object
+     * @throws HarReaderException trouble when reading HAR file
+     */
     protected Har loadHarFile(String fileHar) throws HarReaderException {
         Har har = new HarReader().readFromFile(new File(fileHar));
         return har;
     }
 
-    protected void convertHarToJmx(Har har, String jmxXmlOutFile, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude, int pageStartNumber, int samplerStartNumber) throws ParserConfigurationException, TransformerException, URISyntaxException, MalformedURLException {
+    /**
+     * Create a JMeter script jmx from the Har file
+     * @param har the har file to read
+     * @param jmxXmlOutFile the JMeter script created
+     * @param createNewTransactionAfterRequestMs how many milliseconds for creating a new Transaction Controller
+     * @param isAddPause do we add Flow Control Action PAUSE ?
+     * @param isRemoveCookie do we remove Cookie information ?
+     * @param isRemoveCacheRequest do we remove the cache information for the Http Request ?
+     * @param urlFilterToInclude the regex filter to include url
+     * @param urlFilterToExclude the regex filter to exclude url
+     * @param pageStartNumber the first page number
+     * @param samplerStartNumber the first http sampler number
+     * @param listTransactionInfo list with TransactionInfo for HAR generated from LoadRunner Web Recorder
+     * @throws ParserConfigurationException regex expression is incorrect
+     * @throws TransformerException Megatron we have a problem
+     * @throws URISyntaxException trouble to convert String to a URI
+     * @throws MalformedURLException  trouble to convert String to a URL
+     */
+    protected void convertHarToJmx(Har har, String jmxXmlOutFile, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude, int pageStartNumber, int samplerStartNumber, List<TransactionInfo> listTransactionInfo) throws ParserConfigurationException, TransformerException, URISyntaxException, MalformedURLException {
         XmlJmx xmlJmx = new XmlJmx();
-        Document jmxDocument = xmlJmx.convertHarToJmxXml(har, createNewTransactionAfterRequestMs, isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude, pageStartNumber, samplerStartNumber);
+        Document jmxDocument = xmlJmx.convertHarToJmxXml(har, createNewTransactionAfterRequestMs, isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude, pageStartNumber, samplerStartNumber, listTransactionInfo);
 
         xmlJmx.saveXmFile(jmxDocument, jmxXmlOutFile);
 
     }
 
+    /**
+     * Create the Record.xml file that could be open this a Listener View Results Tree
+     * @param har the har file to read
+     * @param jmxXmlOutFile the xml file created
+     * @param urlFilterToInclude the regex filter to include url
+     * @param urlFilterToExclude the regex filter to exclude url
+     * @param pageStartNumber the first page number
+     * @param samplerStartNumber the first http sampler number
+     * @throws ParserConfigurationException regex expression is incorrect
+     * @throws TransformerException Megatron we have a problem
+     * @throws URISyntaxException  trouble to convert String to a URI
+     * @throws MalformedURLException trouble to convert String to a URL
+     */
     protected void harToRecordXml(Har har, String jmxXmlOutFile, String urlFilterToInclude, String urlFilterToExclude, int pageStartNumber, int samplerStartNumber) throws ParserConfigurationException, TransformerException, URISyntaxException, MalformedURLException {
         Har2TestResultsXml har2TestResultsXml = new Har2TestResultsXml();
         Document jmxDocument = har2TestResultsXml.convertHarToTestResultXml(har, urlFilterToInclude, urlFilterToExclude, samplerStartNumber);
@@ -248,6 +355,12 @@ public class HarForJMeter {
         XmlJmx.saveXmFile(jmxDocument, jmxXmlOutFile);
 
     }
+
+    /**
+     * Special treatment for multi-part (usually upload file)
+     * @param harRequest the harRequest with multipart/form-data;
+     * @return HarPostData modified with file information and others parameters
+     */
     public static HarPostData extractParamsFromMultiPart(HarRequest harRequest) {
         HarPostData harPostData = harRequest.getPostData();
         String mimeType =  harPostData.getMimeType(); // "multipart/form-data; boundary=---------------------------57886876840140655003344272961"
@@ -260,6 +373,7 @@ public class HarForJMeter {
         String text = harPostData.getText();
         String[] tabParams = StringUtils.splitByWholeSeparator(text,"--" + boundary + "\r\n");
         LOGGER.info("tabParams.length=" + tabParams.length);
+
         for (int i = 0; i < tabParams.length; i++) {
             String paramInter = tabParams[i];
             paramInter = paramInter.substring(0,Math.min(512, paramInter.length()));
@@ -294,6 +408,10 @@ public class HarForJMeter {
         return harPostDataModified;
     }
 
+    /**
+     * Create the Command Line Parameters Options
+     * @return Option CLI
+     */
     private static Options createOptions() {
         Options options = new Options();
 
@@ -362,10 +480,30 @@ public class HarForJMeter {
                 .build();
         options.addOption(samplerStartNumberOpt);
 
+        Option lrwrUseInfosOpt = Option.builder(K_LRWR_USE_INFOS).argName(K_LRWR_USE_INFOS).hasArg(true)
+                .required(false)
+                .desc("Optional, the har file has been generated with LoadRunner Web Recorder and contains Transaction Name, expected value : 'transaction_name' or don't add this parameter")
+                .build();
+        options.addOption(lrwrUseInfosOpt);
+
+
+        Option externalFileInfosOpt = Option.builder(K_EXTERNAL_FILE_INFOS).argName(K_EXTERNAL_FILE_INFOS).hasArg(true)
+                .required(false)
+                .desc("Optional, csv file contains external infos : timestamp transaction name and start or end")
+                .build();
+        options.addOption(externalFileInfosOpt);
 
         return options;
     }
 
+    /**
+     * Convert the main args parameters to properties
+     * @param optionsP the command line options declared
+     * @param args the cli parameters
+     * @return properties
+     * @throws ParseException can't parse command line parmeter
+     * @throws MissingOptionException a parameter is mandatory but not present
+     */
     private static Properties parseOption(Options optionsP, String[] args)
             throws ParseException, MissingOptionException {
         Properties properties = new Properties();
@@ -423,9 +561,20 @@ public class HarForJMeter {
             properties.setProperty(K_SAMPLER_START_NUMBER, line.getOptionValue(K_SAMPLER_START_NUMBER));
         }
 
+        if (line.hasOption(K_LRWR_USE_INFOS)) {
+            properties.setProperty(K_LRWR_USE_INFOS, line.getOptionValue(K_LRWR_USE_INFOS));
+        }
+
+        if (line.hasOption(K_EXTERNAL_FILE_INFOS)) {
+            properties.setProperty(K_EXTERNAL_FILE_INFOS, line.getOptionValue(K_EXTERNAL_FILE_INFOS));
+        }
         return properties;
     }
 
+    /**
+     * Help to command line parameters
+     * @param options the command line options declared
+     */
     private static void helpUsage(Options options) {
         HelpFormatter formatter = new HelpFormatter();
         String footer = "E.g : java -jar har-for-jmeter-<version>-jar-with-dependencies.jar -" + K_HAR_IN_OPT + " myhar.har -" + K_JMETER_FILE_OUT_OPT + " scriptout.jmx -"

@@ -6,7 +6,7 @@
 
     <groupId>io.github.vdaburon</groupId>
     <artifactId>har-to-jmeter-convertor</artifactId>
-    <version>2.3</version>
+    <version>5.0</version>
     <packaging>jar</packaging>
 
     <name>Convert a HAR file to JMX script file and a record XML file</name>
@@ -66,7 +66,7 @@
         <dependency>
             <groupId>commons-cli</groupId>
             <artifactId>commons-cli</artifactId>
-            <version>1.6.0</version>
+            <version>1.7.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -78,6 +78,11 @@
             <artifactId>har-reader</artifactId>
             <version>2.3.0</version>
         </dependency>
+        <dependency>
+            <groupId>com.jayway.jsonpath</groupId>
+            <artifactId>json-path</artifactId>
+            <version>2.9.0</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -85,7 +90,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.12.1</version>
+                <version>3.13.0</version>
                 <configuration>
                     <source>${maven.compiler.source}</source>
                     <target>${maven.compiler.target}</target>
@@ -108,7 +113,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.3.0</version>
+                <version>3.3.1</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -122,7 +127,7 @@
                 <!-- create the uber jar : mvn clean package -->
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>3.6.0</version>
+                <version>3.7.1</version>
                 <executions>
                     <execution>
                         <phase>package</phase>

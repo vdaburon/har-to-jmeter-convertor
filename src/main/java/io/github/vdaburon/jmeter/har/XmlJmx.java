@@ -28,6 +28,8 @@ import de.sstoehr.harreader.model.HarPostDataParam;
 import de.sstoehr.harreader.model.HarQueryParam;
 import de.sstoehr.harreader.model.HarRequest;
 import de.sstoehr.harreader.model.HttpMethod;
+import io.github.vdaburon.jmeter.har.common.TransactionInfo;
+import io.github.vdaburon.jmeter.har.lrwr.ManageLrwr;
 import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -46,13 +48,19 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.InvalidParameterException;
+
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * This class create a JMeter script jmx from a HAR JSON file.
+ * The jmx file is a XML file, we use XML library to create the file.
+ */
 
 public class XmlJmx {
 
@@ -62,7 +70,8 @@ public class XmlJmx {
     private static final String K_JMETER_VERSION = "5.6.3";
     private static final String K_THREAD_GROUP_NAME = "Thead Group HAR Imported";
     private static final Logger LOGGER = Logger.getLogger(XmlJmx.class.getName());
-    protected Document convertHarToJmxXml(Har har, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude, int pageStartNumber, int samplerStartNumber) throws ParserConfigurationException, URISyntaxException, MalformedURLException {
+
+    protected Document convertHarToJmxXml(Har har, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude, int pageStartNumber, int samplerStartNumber, List<TransactionInfo> listTransactionInfo) throws ParserConfigurationException, URISyntaxException, MalformedURLException {
 
         Pattern patternUrlInclude = null;
         if (!urlFilterToInclude.isEmpty()) {
@@ -154,6 +163,18 @@ public class XmlJmx {
                 // the title is not a valid uri, use directly the title
                 pageTitle = pageInter.getTitle();
             }
+
+            TransactionInfo transactionInfo = null;
+            if (listTransactionInfo != null) {
+                // Do we have a page or sub page from lrwr Transaction ?
+                Date datePageStartedDateTime = pageInter.getStartedDateTime();
+                String pageStartedDateTime = Utils.dateToIsoFormat(datePageStartedDateTime);
+                transactionInfo = ManageLrwr.getTransactionInfoAroundDateTime(pageStartedDateTime,listTransactionInfo);
+                if (transactionInfo != null) {
+                    pageTitle = transactionInfo.getName();
+                    LOGGER.info("Set the page title with the transaction name: " + pageTitle);
+                }
+            }
             String tcName = String.format("PAGE_%02d - " + pageTitle, pageNum); // PAGE_03 - /gestdocqualif/servletStat
             pageNum++;
             if (p == 0) {
@@ -190,17 +211,21 @@ public class XmlJmx {
                     currentUrl = harRequest.getUrl();
 
                     boolean isAddThisRequest = true;
+
                     if (patternUrlInclude != null) {
+                        // first filter include
                         Matcher matcher = patternUrlInclude.matcher(currentUrl);
                         isAddThisRequest = matcher.find();
                     }
-                    if (patternUrlExclude != null) {
+
+                    if (isAddThisRequest && patternUrlExclude != null) {
+                        // second filter exclude
                         Matcher matcher = patternUrlExclude.matcher(currentUrl);
                         isAddThisRequest = !matcher.find();
                     }
 
                     HashMap hAddictional = (HashMap<String, Object>) harEntryInter.getAdditional();
-                    if (hAddictional != null) {
+                    if (isAddThisRequest && hAddictional != null) {
                         String fromCache = (String) hAddictional.get("_fromCache");
                         if (fromCache != null) {
                             // this url content is in the browser cache (memory or disk) no need to create a new request
@@ -214,6 +239,31 @@ public class XmlJmx {
                         httpSamplernum++;
                         Element httpSampler = createHttpSamplerProxy(document, httpLabel, scheme, host, iPort, harRequest);
 
+                        boolean isCreateNewTcFromTransactionInfo = false;
+                        if (listTransactionInfo != null) {
+                            // Do we have a page or sub page from lrwr Transaction or external cv file transaction info ?
+                            Date dateEntryStartedDateTime = harEntryInter.getStartedDateTime();
+                            String entryStartedDateTime = Utils.dateToIsoFormat(dateEntryStartedDateTime);
+                            TransactionInfo transactionInfo2 = ManageLrwr.getTransactionInfoAroundDateTime(entryStartedDateTime,listTransactionInfo);
+                            if (transactionInfo2 != null && transactionInfo !=null) {
+                                if (transactionInfo2.getBeginDateTime().equals(transactionInfo.getBeginDateTime())) {
+                                    // same transaction because the same begin timestamp, do nothing
+                                } else {
+                                    pageTitle = transactionInfo2.getName();
+                                    LOGGER.info("Set the page title with the transaction name: " + pageTitle);
+                                    String tcNameFromRequest = String.format("PAGE_%02d - " + pageTitle, pageNum);
+                                    transactionInfo = transactionInfo2;
+                                    pageNum++;
+                                    Element eltTransactionControllerNew = createTransactionController(document, tcNameFromRequest);
+                                    hashAfterThreadGroup.appendChild(eltTransactionControllerNew);
+                                    hashTreeAfterTc = createHashTree(document);
+                                    hashAfterThreadGroup.appendChild(hashTreeAfterTc);
+                                    isCreateNewTcFromTransactionInfo = true;
+
+                                }
+                            }
+                        }
+
                         if (isCreateNewTransactionAfterRequestMs && timeBetween2Requests > createNewTransactionAfterRequestMs) {
                             if (isAddPause) {
                                 Element eltTestAction = createTestActionPause(document, "Flow Control Action PAUSE", timeBetween2Requests);
@@ -222,13 +272,15 @@ public class XmlJmx {
                                 hashAfterThreadGroup.appendChild(hashAfterTestAction);
                             }
 
-                            URI pageUrlFromRequest = new URI(harRequest.getUrl());
-                            String tcNameFromRequest = String.format("PAGE_%02d - " + pageUrlFromRequest.getPath(), pageNum); // PAGE_03 - /gestdocqualif/servletStat
-                            pageNum++;
-                            Element eltTransactionControllerNew = createTransactionController(document, tcNameFromRequest);
-                            hashAfterThreadGroup.appendChild(eltTransactionControllerNew);
-                            hashTreeAfterTc = createHashTree(document);
-                            hashAfterThreadGroup.appendChild(hashTreeAfterTc);
+                            if (!isCreateNewTcFromTransactionInfo) {
+                                URI pageUrlFromRequest = new URI(harRequest.getUrl());
+                                String tcNameFromRequest = String.format("PAGE_%02d - " + pageUrlFromRequest.getPath(), pageNum); // PAGE_03 - /gestdocqualif/servletStat
+                                pageNum++;
+                                Element eltTransactionControllerNew = createTransactionController(document, tcNameFromRequest);
+                                hashAfterThreadGroup.appendChild(eltTransactionControllerNew);
+                                hashTreeAfterTc = createHashTree(document);
+                                hashAfterThreadGroup.appendChild(hashTreeAfterTc);
+                            }
                         }
                         timeRequestBefore = timeRequestStarted;
 

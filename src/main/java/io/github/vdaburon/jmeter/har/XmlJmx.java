@@ -166,7 +166,7 @@ public class XmlJmx {
 
             TransactionInfo transactionInfo = null;
             if (listTransactionInfo != null) {
-                // Do we have a page or sub page from lrwr Transaction ?
+                // Do we have a page  from lrwr Transaction or external cv file transaction info ?
                 Date datePageStartedDateTime = pageInter.getStartedDateTime();
                 String pageStartedDateTime = Utils.dateToIsoFormat(datePageStartedDateTime);
                 transactionInfo = ManageLrwr.getTransactionInfoAroundDateTime(pageStartedDateTime,listTransactionInfo);
@@ -245,21 +245,28 @@ public class XmlJmx {
                             Date dateEntryStartedDateTime = harEntryInter.getStartedDateTime();
                             String entryStartedDateTime = Utils.dateToIsoFormat(dateEntryStartedDateTime);
                             TransactionInfo transactionInfo2 = ManageLrwr.getTransactionInfoAroundDateTime(entryStartedDateTime,listTransactionInfo);
-                            if (transactionInfo2 != null && transactionInfo !=null) {
-                                if (transactionInfo2.getBeginDateTime().equals(transactionInfo.getBeginDateTime())) {
-                                    // same transaction because the same begin timestamp, do nothing
-                                } else {
-                                    pageTitle = transactionInfo2.getName();
-                                    LOGGER.info("Set the page title with the transaction name: " + pageTitle);
-                                    String tcNameFromRequest = String.format("PAGE_%02d - " + pageTitle, pageNum);
-                                    transactionInfo = transactionInfo2;
-                                    pageNum++;
-                                    Element eltTransactionControllerNew = createTransactionController(document, tcNameFromRequest);
-                                    hashAfterThreadGroup.appendChild(eltTransactionControllerNew);
-                                    hashTreeAfterTc = createHashTree(document);
-                                    hashAfterThreadGroup.appendChild(hashTreeAfterTc);
-                                    isCreateNewTcFromTransactionInfo = true;
+                            if (transactionInfo2 != null) {
+                                isCreateNewTcFromTransactionInfo = true;
 
+                                if (transactionInfo !=null) {
+                                    if (transactionInfo2.getBeginDateTime().equals(transactionInfo.getBeginDateTime())) {
+                                        // same transaction because the same begin timestamp, do nothing
+                                        isCreateNewTcFromTransactionInfo = false;
+                                    } else {
+                                        isCreateNewTcFromTransactionInfo = true;
+                                    }
+                                }
+
+                                if (isCreateNewTcFromTransactionInfo) {
+                                        pageTitle = transactionInfo2.getName();
+                                        LOGGER.info("Set the page title with the transaction name: " + pageTitle);
+                                        String tcNameFromRequest = String.format("PAGE_%02d - " + pageTitle, pageNum);
+                                        transactionInfo = transactionInfo2;
+                                        pageNum++;
+                                        Element eltTransactionControllerNew = createTransactionController(document, tcNameFromRequest);
+                                        hashAfterThreadGroup.appendChild(eltTransactionControllerNew);
+                                        hashTreeAfterTc = createHashTree(document);
+                                        hashAfterThreadGroup.appendChild(hashTreeAfterTc);
                                 }
                             }
                         }

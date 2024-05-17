@@ -63,7 +63,7 @@ public class ManageExternalFile {
         2024-05-07T07:56:40.513Z;TRANSACTION;home_page;start
         2024-05-07T07:56:56.261Z;TRANSACTION;home_page;stop
         2024-05-07T07:57:08.679Z;TRANSACTION;bt_authent;start
-        2024-05-07T07:57:10.123;COMMENT;user Lida ESPA;
+        2024-05-07T07:57:10.123Z;COMMENT;user toto;
         */
         ArrayList<TransactionInfo> listTransactionInfo = new ArrayList();
 

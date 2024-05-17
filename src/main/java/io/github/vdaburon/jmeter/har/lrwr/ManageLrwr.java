@@ -80,7 +80,7 @@ public class ManageLrwr {
             listHarLrTransactions = new ArrayList() ;
 
             for (int i = 0; i < jsonArray.size(); i++) {
-                // transforme the JSON array of LinkedHashMap to an List of HarLrTransactions
+                // transforme the JSON array of LinkedHashMap to a List of HarLrTransactions
                 LinkedHashMap lhm = (LinkedHashMap) jsonArray.get(i);
                 LOGGER.fine("lhm=" +lhm);
                 HarLrTransactions harLrTransactions = new HarLrTransactions();
@@ -144,7 +144,7 @@ public class ManageLrwr {
     }
 
     /**
-     * Get the TransactionInfo from the listTransactionInfo when the parameter startedDateTime is between begin date and end date
+     * Get the last TransactionInfo from the listTransactionInfo when the parameter startedDateTime is between begin date and end date
      * @param startedDateTime the date to search the corresponding TransactionInfo
      * @param listTransactionInfo the listTransactionInfo contains all TransactionInfo
      * @return if a TransactionInfo which includes start and end dates from startedDateTime exists return this TransactionInfo else return null
@@ -155,13 +155,13 @@ public class ManageLrwr {
         int i = 0;
         TransactionInfo transactionInfoFind = null;
 
-        while (!isFind && i < nbElts) {
+        while (i < nbElts) {
             TransactionInfo transactionInfo = listTransactionInfo.get(i);
-            if (transactionInfo.getBeginDateTime().compareTo(startedDateTime) <=  0 && transactionInfo.getEndDateTime().compareTo(startedDateTime) >= 0) {
+            if (transactionInfo.getBeginDateTime().compareTo(startedDateTime) <= 0 && transactionInfo.getEndDateTime().compareTo(startedDateTime) >= 0) {
                 isFind = true;
                 transactionInfoFind = transactionInfo;
             }
-             i++;
+            i++;
         }
 
         if (isFind) {

@@ -32,4 +32,30 @@ public class Utils {
         String sDateIso = sdf.format(calendar.getTime());
         return sDateIso;
     }
+
+    /**
+     * Extract the mimeType without charset,
+     *    e.g: "application/x-www-form-urlencoded; charset=UTF-8" will return "application/x-www-form-urlencoded"
+     *    e.g : "multipart/form-data; boundary=----WebKitFormBoundaryqBhyHjcDVm2CaflU" will return "multipart/form-data"
+     *    e.g: "text/xml" return "text/xml"
+     * @param mimeTypeToExtract the mimeType in the JSON HAR, attribut name : mimeType
+     * @return the mimeType without charset
+     */
+    public static String extractMimeType(String mimeTypeToExtract) {
+        String mimeTypeInter = mimeTypeToExtract.toLowerCase();
+        String[] tabSplitMime = org.apache.commons.lang3.StringUtils.splitPreserveAllTokens(mimeTypeInter,';');
+        String mimeType = "";
+        if (tabSplitMime.length > 1) {
+            for (int i = 0; i < tabSplitMime.length; i++) {
+                String param = tabSplitMime[i];
+                if (!param.contains("charset=") && !param.contains("boundary=")) {
+                    mimeType = param;
+                    break;
+                }
+            }
+        } else {
+            mimeType = mimeTypeToExtract;
+        }
+        return mimeType;
+    }
 }

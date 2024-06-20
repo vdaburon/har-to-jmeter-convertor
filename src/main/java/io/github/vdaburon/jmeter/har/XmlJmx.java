@@ -978,6 +978,7 @@ public class XmlJmx {
         if (harRequest.getMethod().equals(HttpMethod.POST) || harRequest.getMethod().equals(HttpMethod.PUT) || harRequest.getMethod().equals(HttpMethod.PATCH)) {
             HarPostData postData = harRequest.getPostData();
             String mimeType = postData.getMimeType();
+            mimeType = Utils.extractMimeType(mimeType); // remove charset if exists
 
 
 

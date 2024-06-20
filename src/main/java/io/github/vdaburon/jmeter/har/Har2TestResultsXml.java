@@ -375,8 +375,9 @@ public class Har2TestResultsXml {
         StringBuffer sb = new StringBuffer(2048);
         HarPostData postData = harRequest.getPostData();
         String mimeType = postData.getMimeType();
+        String mimeTypeExtract = Utils.extractMimeType(mimeType);
         boolean isParamAdd = false;
-        if ("application/x-www-form-urlencoded".equalsIgnoreCase(mimeType)) {
+        if ("application/x-www-form-urlencoded".equalsIgnoreCase(mimeTypeExtract)) {
             List<HarPostDataParam> lDataParams = postData.getParams();
             for (int i = 0; i < lDataParams.size(); i++) {
                 if (i > 0) {
@@ -392,7 +393,7 @@ public class Har2TestResultsXml {
             isParamAdd = true;
         }
 
-        if (isParamAdd == false && mimeType != null && mimeType.contains("multipart/form-data")) {
+        if (isParamAdd == false && mimeTypeExtract != null && mimeTypeExtract.contains("multipart/form-data")) {
             HarPostData postDataFormData = HarForJMeter.extractParamsFromMultiPart(harRequest);
             String boundary = StringUtils.substringAfter(mimeType,"boundary=");
             LOGGER.fine("boundary=<" + boundary + ">");

@@ -6,7 +6,7 @@
 
     <groupId>io.github.vdaburon</groupId>
     <artifactId>har-to-jmeter-convertor</artifactId>
-    <version>5.1</version>
+    <version>5.2</version>
     <packaging>jar</packaging>
 
     <name>Convert a HAR file to JMX script file and a record XML file</name>

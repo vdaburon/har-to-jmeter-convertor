@@ -42,6 +42,10 @@ public class Utils {
      * @return the mimeType without charset
      */
     public static String extractMimeType(String mimeTypeToExtract) {
+        if (mimeTypeToExtract == null) {
+            return "";
+        }
+
         String mimeTypeInter = mimeTypeToExtract.toLowerCase();
         String[] tabSplitMime = org.apache.commons.lang3.StringUtils.splitPreserveAllTokens(mimeTypeInter,';');
         String mimeType = "";

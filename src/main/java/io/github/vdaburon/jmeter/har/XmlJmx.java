@@ -1123,6 +1123,9 @@ public class XmlJmx {
                 elementProp.appendChild(boolProp1);
 
                 String paramValue = postData.getText();
+                if (paramValue == null) {
+                    paramValue = "";
+                }
                 Element stringProp3 = createProperty(document, "stringProp", "Argument.value", paramValue);
                 elementProp.appendChild(stringProp3);
 

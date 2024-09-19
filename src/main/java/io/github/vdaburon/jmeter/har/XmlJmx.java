@@ -43,10 +43,14 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
-import java.io.File;
+import java.io.BufferedWriter;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidParameterException;
 
 import java.util.ArrayList;
@@ -69,9 +73,10 @@ public class XmlJmx {
     protected static final String K_PORT = "port";
     private static final String K_JMETER_VERSION = "5.6.3";
     private static final String K_THREAD_GROUP_NAME = "Thead Group HAR Imported";
+    private static final String K_VIEW_RESULT_TREE_COMMENT = "For The Recording XML File Created";
     private static final Logger LOGGER = Logger.getLogger(XmlJmx.class.getName());
 
-    protected Document convertHarToJmxXml(Har har, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude, int pageStartNumber, int samplerStartNumber, List<TransactionInfo> listTransactionInfo) throws ParserConfigurationException, URISyntaxException, MalformedURLException {
+    protected Document convertHarToJmxXml(Har har, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude, int pageStartNumber, int samplerStartNumber, List<TransactionInfo> listTransactionInfo, boolean isAddViewTreeForRecord, String recordXmlOut) throws ParserConfigurationException, URISyntaxException, MalformedURLException {
 
         Pattern patternUrlInclude = null;
         if (!urlFilterToInclude.isEmpty()) {
@@ -92,6 +97,18 @@ public class XmlJmx {
         Element eltHashTreeAfterTestPlan = createJmxTestPlanAndTheadGroup(document);
         Element hashAfterThreadGroup = createHashTree(document);
         eltHashTreeAfterTestPlan.appendChild(hashAfterThreadGroup);
+
+        if (isAddViewTreeForRecord && !recordXmlOut.isEmpty()) {
+            Element eltHttpTestScriptRecorder = createHttpTestScriptRecorder(document);
+            eltHashTreeAfterTestPlan.appendChild(eltHttpTestScriptRecorder);
+
+            Element hashTreeAfterTestScriptRecorder = createHashTree(document);
+            Element eltViewResultTree = createViewResultTree(document, recordXmlOut);
+            hashTreeAfterTestScriptRecorder.appendChild(eltViewResultTree);
+            Element hashTreeAfterViewResultTree = createHashTree(document);
+            hashTreeAfterTestScriptRecorder.appendChild(hashTreeAfterViewResultTree);
+            eltHashTreeAfterTestPlan.appendChild(hashTreeAfterTestScriptRecorder);
+        }
 
         HashMap<String, String> hSchemeHostPort = getSchemeHostPortFirstPageOrUrl(har);
         String scheme = hSchemeHostPort.get(K_SCHEME);
@@ -308,6 +325,159 @@ public class XmlJmx {
         }
         LOGGER.info("JMX file contains " + httpSamplernum + " HTTPSamplerProxy");
         return document;
+    }
+
+    protected Element createHttpTestScriptRecorder(Document document) {
+        /*
+        <ProxyControl guiclass="ProxyControlGui" testclass="ProxyControl" testname="HTTP(S) Test Script Recorder" enabled="false">
+           1 <stringProp name="ProxyControlGui.port">8888</stringProp>
+           2 <collectionProp name="ProxyControlGui.exclude_list"/>
+           3 <collectionProp name="ProxyControlGui.include_list"/>
+           4 <boolProp name="ProxyControlGui.capture_http_headers">true</boolProp>
+           5 <intProp name="ProxyControlGui.grouping_mode">0</intProp>
+           6 <boolProp name="ProxyControlGui.add_assertion">false</boolProp>
+           7 <stringProp name="ProxyControlGui.sampler_type_name"></stringProp>
+           8 <boolProp name="ProxyControlGui.sampler_redirect_automatically">false</boolProp>
+           9 <boolProp name="ProxyControlGui.sampler_follow_redirects">true</boolProp>
+          10 <boolProp name="ProxyControlGui.use_keepalive">true</boolProp>
+          11 <boolProp name="ProxyControlGui.detect_graphql_request">true</boolProp>
+          12 <boolProp name="ProxyControlGui.sampler_download_images">false</boolProp>
+          13 <intProp name="ProxyControlGui.proxy_http_sampler_naming_mode">0</intProp>
+          14 <stringProp name="ProxyControlGui.default_encoding"></stringProp>
+          15 <stringProp name="ProxyControlGui.proxy_prefix_http_sampler_name"></stringProp>
+          16 <stringProp name="ProxyControlGui.proxy_pause_http_sampler"></stringProp>
+          17 <boolProp name="ProxyControlGui.notify_child_sl_filtered">false</boolProp>
+          18 <boolProp name="ProxyControlGui.regex_match">false</boolProp>
+          19 <stringProp name="ProxyControlGui.content_type_include"></stringProp>
+          20 <stringProp name="ProxyControlGui.content_type_exclude"></stringProp>
+      </ProxyControl>
+      <hashTree>
+         */
+        Element eltProxyControl = document.createElement("ProxyControl");
+        Attr attrPcguiclass = document.createAttribute("guiclass");
+        attrPcguiclass.setValue("ProxyControlGui");
+        eltProxyControl.setAttributeNode(attrPcguiclass);
+
+        Attr attrPctestclass = document.createAttribute("testclass");
+        attrPctestclass.setValue("ProxyControl");
+        eltProxyControl.setAttributeNode(attrPctestclass);
+
+        Attr attrPctestname = document.createAttribute("testname");
+        attrPctestname.setValue("HTTP(S) Test Script Recorder");
+        eltProxyControl.setAttributeNode(attrPctestname);
+
+        Attr attrPcenabled = document.createAttribute("enabled");
+        attrPcenabled.setValue("false");
+        eltProxyControl.setAttributeNode(attrPcenabled);
+
+        Element stringProp1 = createProperty(document, "stringProp", "ProxyControlGui.port", "8888");
+        eltProxyControl.appendChild(stringProp1);
+        Element collectionProp2 = createProperty(document, "collectionProp", "ProxyControlGui.exclude_list", null);
+        eltProxyControl.appendChild(collectionProp2);
+        Element collectionProp3 = createProperty(document, "collectionProp", "ProxyControlGui.include_list", null);
+        eltProxyControl.appendChild(collectionProp3);
+        Element boolProp4 = createProperty(document, "boolProp", "ProxyControlGui.capture_http_headers", "true");
+        eltProxyControl.appendChild(boolProp4);
+        Element intProp5 = createProperty(document, "boolProp", "ProxyControlGui.grouping_mode", "0");
+        eltProxyControl.appendChild(intProp5);
+        Element boolProp6 = createProperty(document, "boolProp", "ProxyControlGui.add_assertion", "false");
+        eltProxyControl.appendChild(boolProp6);
+        Element stringProp7 = createProperty(document, "stringProp", "ProxyControlGui.sampler_type_name", null);
+        eltProxyControl.appendChild(stringProp7);
+        Element boolProp8 = createProperty(document, "boolProp", "ProxyControlGui.sampler_redirect_automatically", "false");
+        eltProxyControl.appendChild(boolProp8);
+        Element boolProp9 = createProperty(document, "boolProp", "ProxyControlGui.sampler_follow_redirects", "true");
+        eltProxyControl.appendChild(boolProp9);
+        Element boolProp10 = createProperty(document, "boolProp", "ProxyControlGui.use_keepalive", "true");
+        eltProxyControl.appendChild(boolProp10);
+        Element boolProp11 = createProperty(document, "boolProp", "ProxyControlGui.detect_graphql_request", "true");
+        eltProxyControl.appendChild(boolProp11);
+        Element boolProp12 = createProperty(document, "boolProp", "ProxyControlGui.sampler_download_images", "false");
+        eltProxyControl.appendChild(boolProp12);
+        Element stringProp13 = createProperty(document, "intProp", "ProxyControlGui.proxy_http_sampler_naming_mode", "0");
+        eltProxyControl.appendChild(stringProp13);
+        Element stringProp14 = createProperty(document, "stringProp", "ProxyControlGui.default_encoding", null);
+        eltProxyControl.appendChild(stringProp14);
+        Element stringProp15 = createProperty(document, "stringProp", "ProxyControlGui.proxy_prefix_http_sampler_name", null);
+        eltProxyControl.appendChild(stringProp15);
+        Element stringProp16 = createProperty(document, "stringProp", "ProxyControlGui.proxy_pause_http_sampler", null);
+        eltProxyControl.appendChild(stringProp16);
+        Element boolProp17 = createProperty(document, "boolProp", "ProxyControlGui.notify_child_sl_filtered", "false");
+        eltProxyControl.appendChild(boolProp17);
+        Element boolProp18 = createProperty(document, "boolProp", "ProxyControlGui.regex_match", "false");
+        eltProxyControl.appendChild(boolProp18);
+        Element stringProp19 = createProperty(document, "stringProp", "ProxyControlGui.content_type_include", null);
+        eltProxyControl.appendChild(stringProp19);
+        Element stringProp20 = createProperty(document, "stringProp", "ProxyControlGui.content_type_exclude", null);
+        eltProxyControl.appendChild(stringProp20);
+
+        return eltProxyControl;
+    }
+
+    protected Element createViewResultTree(Document document, String recordXmlOut) {
+        /*
+        <ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="View Results Tree">
+          <boolProp name="ResultCollector.error_logging">false</boolProp>
+          <objProp>
+            <name>saveConfig</name>
+            <value class="SampleSaveConfiguration">
+              <time>true</time>
+              <latency>true</latency>
+              <timestamp>true</timestamp>
+              <success>true</success>
+              <label>true</label>
+              <code>true</code>
+              <message>true</message>
+              <threadName>true</threadName>
+              <dataType>true</dataType>
+              <encoding>false</encoding>
+              <assertions>true</assertions>
+              <subresults>true</subresults>
+              <responseData>false</responseData>
+              <samplerData>false</samplerData>
+              <xml>false</xml>
+              <fieldNames>true</fieldNames>
+              <responseHeaders>false</responseHeaders>
+              <requestHeaders>false</requestHeaders>
+              <responseDataOnError>false</responseDataOnError>
+              <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+              <assertionsResultsToSave>0</assertionsResultsToSave>
+              <bytes>true</bytes>
+              <sentBytes>true</sentBytes>
+              <url>true</url>
+              <hostname>true</hostname>
+              <threadCounts>true</threadCounts>
+              <idleTime>true</idleTime>
+              <connectTime>true</connectTime>
+            </value>
+          </objProp>
+          <stringProp name="filename">C:/jmeter/har/record.xml</stringProp>
+        </ResultCollector>
+        <hashTree/>
+       */
+        Element eltResultCollector = document.createElement("ResultCollector");
+        Attr attrRcguiclass = document.createAttribute("guiclass");
+        attrRcguiclass.setValue("ViewResultsFullVisualizer");
+        eltResultCollector.setAttributeNode(attrRcguiclass);
+
+        Attr attrRctestclass = document.createAttribute("testclass");
+        attrRctestclass.setValue("ResultCollector");
+        eltResultCollector.setAttributeNode(attrRctestclass);
+
+        Attr attrRctestname = document.createAttribute("testname");
+        attrRctestname.setValue("View Results Tree");
+        eltResultCollector.setAttributeNode(attrRctestname);
+
+
+        Element boolProp1 = createProperty(document, "boolProp", "ResultCollector.error_logging", "false");
+        eltResultCollector.appendChild(boolProp1);
+        Element stringProp2 = createProperty(document, "stringProp", "filename", recordXmlOut);
+        eltResultCollector.appendChild(stringProp2);
+        Element stringProp3 = createProperty(document, "stringProp", "TestPlan.comments", K_VIEW_RESULT_TREE_COMMENT);
+        eltResultCollector.appendChild(stringProp3);
+
+
+        return eltResultCollector;
     }
 
     protected Element createJmxTestPlanAndTheadGroup(Document document) throws ParserConfigurationException {
@@ -1365,11 +1535,18 @@ public class XmlJmx {
     public static void saveXmFile(Document document, String jmxXmlFileOut) throws TransformerException {
         // create the xml file
         //transform the DOM Object to an XML File
+        LOGGER.fine("saveXmFile, param jmxXmlFileOut=<" + jmxXmlFileOut + ">" );
         TransformerFactory transformerFactory = TransformerFactory.newInstance();
         Transformer transformer = transformerFactory.newTransformer();
+        transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
         transformer.setOutputProperty(OutputKeys.INDENT, "yes");
         DOMSource domSource = new DOMSource(document);
-        StreamResult streamResult = new StreamResult(new File(jmxXmlFileOut));
-        transformer.transform(domSource, streamResult);
+        try {
+            Writer out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(jmxXmlFileOut), StandardCharsets.UTF_8));
+            StreamResult streamResult = new StreamResult(out);
+            transformer.transform(domSource, streamResult);
+        } catch (Exception e) {
+            throw new TransformerException(e);
+        }
     }
 }

@@ -168,7 +168,7 @@ public class Har2TestResultsXml {
         eltHttpSample.appendChild(eltqueryString);
 
         String urlRedirect = harResponse.getRedirectURL();
-        if (!urlRedirect.isEmpty()) {
+        if (urlRedirect != null && !urlRedirect.isEmpty()) {
             Element eltredirectLocation = document.createElement("redirectLocation");
             eltqueryString = addAttributeToElement(document, eltredirectLocation, "class", "java.lang.String");
             eltredirectLocation.setTextContent(urlRedirect);

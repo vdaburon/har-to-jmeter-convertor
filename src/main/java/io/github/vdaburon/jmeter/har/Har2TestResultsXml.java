@@ -27,7 +27,12 @@ import de.sstoehr.harreader.model.HarPostDataParam;
 import de.sstoehr.harreader.model.HarRequest;
 import de.sstoehr.harreader.model.HarResponse;
 import de.sstoehr.harreader.model.HarTiming;
+
+import io.github.vdaburon.jmeter.har.websocket.WebSocketRequest;
+import io.github.vdaburon.jmeter.har.websocket.WebSocketPDoornboshResultXml;
+
 import org.apache.commons.lang3.StringUtils;
+
 import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -35,7 +40,7 @@ import org.w3c.dom.Element;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import java.net.MalformedURLException;
+
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Base64;
@@ -46,9 +51,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Har2TestResultsXml {
+
     private static final Logger LOGGER = Logger.getLogger(Har2TestResultsXml.class.getName());
 
-    protected Document convertHarToTestResultXml(Har har, String urlFilterToInclude, String urlFilterToExclude, int samplerStartNumber) throws ParserConfigurationException, URISyntaxException, MalformedURLException {
+    protected Document convertHarToTestResultXml(Har har, String urlFilterToInclude, String urlFilterToExclude, int samplerStartNumber, WebSocketRequest webSocketRequest) throws ParserConfigurationException, URISyntaxException {
 
         Pattern patternUrlInclude = null;
         if (!urlFilterToInclude.isEmpty()) {
@@ -66,12 +72,12 @@ public class Har2TestResultsXml {
 
         Document document = documentBuilder.newDocument();
 
-        Element eltTestResults = createTestResults(har, document, patternUrlInclude, patternUrlExclude, samplerStartNumber);
+        Element eltTestResults = createTestResults(har, document, patternUrlInclude, patternUrlExclude, samplerStartNumber, webSocketRequest);
         document.appendChild(eltTestResults);
         return document;
     }
 
-    protected Element createTestResults(Har har, Document document, Pattern patternUrlInclude, Pattern patternUrlExclude, int samplerStartNumber) throws MalformedURLException, URISyntaxException {
+    protected Element createTestResults(Har har, Document document, Pattern patternUrlInclude, Pattern patternUrlExclude, int samplerStartNumber, WebSocketRequest webSocketRequest) throws URISyntaxException {
         Element eltTestResults = document.createElement("testResults");
         Attr attrTrversion = document.createAttribute("version");
         attrTrversion.setValue("1.2");
@@ -110,25 +116,25 @@ public class Har2TestResultsXml {
             String scheme = uri.getScheme();
 
             if ("ws".equalsIgnoreCase(scheme) || "wss".equalsIgnoreCase(scheme)) {
-                // No Web Socket because a http samler with scheme ws (wss) will generate error when open file in Listener View Tree
-                // Need to add a specific sampler from WebSocket Samplers by Peter Doornbosch
-                if (isAddThisRequest) {
-                    num++; // for no offset between jmx script and record.xml, because ws are in the JMeter script in a http sampler
+                 if (isAddThisRequest && webSocketRequest != null) {
+                    num = WebSocketPDoornboshResultXml.createWsSample(document, eltTestResults, harEntryInter, num, webSocketRequest);
+                    num = num + 2;
                 }
-                isAddThisRequest = false;
+                isAddThisRequest = false; // already added
             }
 
             if (isAddThisRequest) {
-                Element eltHttpSample = createHttSample(document, harEntryInter, num);
+                Element eltHttpSample = createHttpSample(document, harEntryInter, num);
                 eltTestResults.appendChild(eltHttpSample);
                 num++;
             }
         }
-        LOGGER.info("testResuts file contains " + num + " httpSample");
+        LOGGER.info("testResuts file contains " + num + " httpSample or wsSample");
         return eltTestResults;
     }
 
-    protected Element createHttSample(Document document, HarEntry harEntry, int num) throws MalformedURLException, URISyntaxException {
+
+    protected Element createHttpSample(Document document, HarEntry harEntry, int num) throws URISyntaxException {
 
         HarRequest harRequest = harEntry.getRequest();
         HarResponse harResponse = harEntry.getResponse();
@@ -189,7 +195,10 @@ public class Har2TestResultsXml {
         return eltHttpSample;
     }
 
-    protected Element createEltHttpSample(Document document, HarEntry harEntry, int num) throws MalformedURLException, URISyntaxException {
+
+
+
+    protected Element createEltHttpSample(Document document, HarEntry harEntry, int num) throws URISyntaxException {
         /*
         <httpSample t="18" it="0" lt="18" ct="9" ts="1699889754878" s="true" lb="002 /gestdocqualif/styles/styles.css" rc="200" rm="OK" tn="" dt="text" de="" by="7904" sc="1" ec="0" ng="0" na="0" hn="browser">
 
@@ -288,7 +297,7 @@ public class Har2TestResultsXml {
 
     }
 
-    protected Element addAttributeToElement(Document document, Element element, String attributeName, String attributeValue) {
+    public static Element addAttributeToElement(Document document, Element element, String attributeName, String attributeValue) {
         Attr attr = document.createAttribute(attributeName);
         attr.setValue(attributeValue);
         element.setAttributeNode(attr);
@@ -300,7 +309,7 @@ public class Har2TestResultsXml {
         attr.setValue(attributeValue);
         return attr;
     }
-    protected Element createRequestHeaders(Document document, HarRequest harRequest) {
+    public static Element createRequestHeaders(Document document, HarRequest harRequest) {
         Element eltRequestHeader = document.createElement("requestHeader");
         eltRequestHeader = addAttributeToElement(document, eltRequestHeader, "class", "java.lang.String");
         List<HarHeader> lRequestHeaders =  harRequest.getHeaders();
@@ -316,7 +325,7 @@ public class Har2TestResultsXml {
         return eltRequestHeader;
     }
 
-    protected Element createResponseHeaders(Document document, HarResponse harResponse) {
+    public static Element createResponseHeaders(Document document, HarResponse harResponse) {
         Element eltResponseHeader = document.createElement("responseHeader");
         eltResponseHeader = addAttributeToElement(document, eltResponseHeader, "class", "java.lang.String");
         List<HarHeader> lResponseHeaders =  harResponse.getHeaders();
@@ -332,7 +341,7 @@ public class Har2TestResultsXml {
         return eltResponseHeader;
     }
 
-    protected Element createCookies(Document document, HarRequest harRequest) {
+    public static Element createCookies(Document document, HarRequest harRequest) {
         Element eltcookies = document.createElement("cookies");
         eltcookies = addAttributeToElement(document, eltcookies, "class", "java.lang.String");
         List<HarCookie> lCookies =  harRequest.getCookies();
@@ -350,7 +359,7 @@ public class Har2TestResultsXml {
         return eltcookies;
     }
 
-    protected Element createEltReponseData(Document document, HarResponse harResponse, boolean isText) {
+    public static Element createEltReponseData(Document document, HarResponse harResponse, boolean isText) {
         Element eltresponseData = document.createElement("responseData");
         eltresponseData = addAttributeToElement(document, eltresponseData, "class", "java.lang.String");
         HarContent harContent = harResponse.getContent();

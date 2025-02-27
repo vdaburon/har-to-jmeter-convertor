@@ -14,11 +14,9 @@
  *
  */
 
-
 package io.github.vdaburon.jmeter.har;
 
 // HAR parser
-
 import de.sstoehr.harreader.model.Har;
 import de.sstoehr.harreader.model.HarEntry;
 import de.sstoehr.harreader.model.HarHeader;
@@ -28,8 +26,12 @@ import de.sstoehr.harreader.model.HarPostDataParam;
 import de.sstoehr.harreader.model.HarQueryParam;
 import de.sstoehr.harreader.model.HarRequest;
 import de.sstoehr.harreader.model.HttpMethod;
+
 import io.github.vdaburon.jmeter.har.common.TransactionInfo;
 import io.github.vdaburon.jmeter.har.lrwr.ManageLrwr;
+import io.github.vdaburon.jmeter.har.websocket.WebSocketPDoornboschXmlJmx;
+import io.github.vdaburon.jmeter.har.websocket.WebSocketRequest;
+
 import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -43,16 +45,15 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
+
 import java.io.BufferedWriter;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidParameterException;
-
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -62,8 +63,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * This class create a JMeter script jmx from a HAR JSON file.
- * The jmx file is a XML file, we use XML library to create the file.
+ * This class create a JMeter script jmx file from a HAR JSON file.
+ * The jmx (JMeter Xml) file is a XML file, we use XML library to create the file.
  */
 
 public class XmlJmx {
@@ -76,7 +77,7 @@ public class XmlJmx {
     private static final String K_VIEW_RESULT_TREE_COMMENT = "For The Recording XML File Created";
     private static final Logger LOGGER = Logger.getLogger(XmlJmx.class.getName());
 
-    protected Document convertHarToJmxXml(Har har, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude, int pageStartNumber, int samplerStartNumber, List<TransactionInfo> listTransactionInfo, boolean isAddViewTreeForRecord, String recordXmlOut) throws ParserConfigurationException, URISyntaxException, MalformedURLException {
+    protected Document convertHarToJmxXml(Har har, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude, int pageStartNumber, int samplerStartNumber, List<TransactionInfo> listTransactionInfo, boolean isAddViewTreeForRecord, WebSocketRequest webSocketRequest, String recordXmlOut) throws ParserConfigurationException, URISyntaxException {
 
         Pattern patternUrlInclude = null;
         if (!urlFilterToInclude.isEmpty()) {
@@ -252,10 +253,29 @@ public class XmlJmx {
 
                     if (isAddThisRequest) {
                         URI url = new URI(harRequest.getUrl());
-                        String httpLabel = String.format("%03d " + url.getPath(), httpSamplernum); // 003 /gestdocqualif/servletStat
+                        String samplerLabel = String.format("%03d " + url.getPath(), httpSamplernum); // 003 /gestdocqualif/servletStat
                         httpSamplernum++;
-                        Element httpSampler = createHttpSamplerProxy(document, httpLabel, scheme, host, iPort, harRequest);
+                        String sUrl = harRequest.getUrl();
+                        String startUrl = sUrl.substring(0, Math.min(2, sUrl.length())); // ht or ws
+                        Element sampler = null;
+                        boolean isWebSocket = false;
+                        if ("ws".equalsIgnoreCase(startUrl) && webSocketRequest != null) { // ws or wss
+                            // WebSocket
+                            URI pageUrlFromRequest = new URI(harRequest.getUrl());
+                            String tcNameFromRequest = String.format("PAGE_%02d - WebSocket " + pageUrlFromRequest.getPath(), pageNum); // PAGE_03 - /gestdocqualif/servletStat
+                            pageNum++;
+                            Element eltTransactionControllerNew = createTransactionController(document, tcNameFromRequest);
+                            hashTreeAfterTc = createHashTree(document);
+                            httpSamplernum = WebSocketPDoornboschXmlJmx.createWebSocketPDoornboschTree(document, hashTreeAfterTc, samplerLabel, scheme, host, iPort, httpSamplernum, webSocketRequest);
+                            httpSamplernum++;
+                            hashAfterThreadGroup.appendChild(eltTransactionControllerNew);
+                            hashAfterThreadGroup.appendChild(hashTreeAfterTc);
 
+                            continue; // websocket and messages was added finish for this sampler
+
+                        } else {
+                            sampler = createHttpSamplerProxy(document, samplerLabel, scheme, host, iPort, harRequest);
+                        }
                         boolean isCreateNewTcFromTransactionInfo = false;
                         if (listTransactionInfo != null) {
                             // Do we have a page or sub page from lrwr Transaction or external cv file transaction info ?
@@ -308,7 +328,7 @@ public class XmlJmx {
                         }
                         timeRequestBefore = timeRequestStarted;
 
-                        hashTreeAfterTc.appendChild(httpSampler);
+                        hashTreeAfterTc.appendChild(sampler);
                         Element hashTreeAfterHttpSampler = createHashTree(document);
                         hashTreeAfterTc.appendChild(hashTreeAfterHttpSampler);
 
@@ -480,7 +500,7 @@ public class XmlJmx {
         return eltResultCollector;
     }
 
-    protected Element createJmxTestPlanAndTheadGroup(Document document) throws ParserConfigurationException {
+    protected Element createJmxTestPlanAndTheadGroup(Document document) {
 /*
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -787,12 +807,13 @@ public class XmlJmx {
 
         return eltTransactionController;
     }
-    protected Element createHashTree(Document document) {
+
+    public static Element createHashTree(Document document) {
         Element eltHashTree = document.createElement("hashTree");
         return eltHashTree;
     }
 
-    protected Element createProperty(Document document, String elementProp, String parameterNameValue, String elementValue) {
+    public static Element createProperty(Document document, String elementProp, String parameterNameValue, String elementValue) {
         Element eltProperty = document.createElement(elementProp); // boolProp or stringProp or intProp
         if (parameterNameValue != null) {
             Attr attrPropertyname = document.createAttribute("name");
@@ -981,7 +1002,7 @@ public class XmlJmx {
         return eltConfigTestElement;
     }
 
-    protected Element createHttpSamplerProxy(Document document, String testname, String scheme, String host, int iPort, HarRequest harRequest) throws MalformedURLException, URISyntaxException {
+    protected Element createHttpSamplerProxy(Document document, String testname, String scheme, String host, int iPort, HarRequest harRequest) throws URISyntaxException {
         /*
          <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="007 /gestdocqualif/servletLogin" enabled="true">
             <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" enabled="true">

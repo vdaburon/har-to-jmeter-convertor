@@ -28,9 +28,10 @@ import io.github.vdaburon.jmeter.har.external.ManageExternalFile;
 import io.github.vdaburon.jmeter.har.lrwr.HarLrTransactions;
 import io.github.vdaburon.jmeter.har.lrwr.ManageLrwr;
 import io.github.vdaburon.jmeter.har.common.TransactionInfo;
+import io.github.vdaburon.jmeter.har.websocket.ManageWebSocket;
+import io.github.vdaburon.jmeter.har.websocket.WebSocketRequest;
 
 import org.apache.commons.lang3.StringUtils;
-import org.w3c.dom.Document;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -41,8 +42,11 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
+import org.w3c.dom.Document;
+
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
+
 import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
@@ -58,7 +62,7 @@ import java.util.regex.PatternSyntaxException;
 
 public class HarForJMeter {
 
-    public static final String APPLICATION_VERSION="6.1";
+    public static final String APPLICATION_VERSION = "7.0";
 
     // CLI OPTIONS
     public static final String K_HAR_IN_OPT = "har_in";
@@ -76,6 +80,8 @@ public class HarForJMeter {
     public static final String K_LRWR_USE_TRANSACTION_NAME = "transaction_name";
     public static final String K_EXTERNAL_FILE_INFOS = "external_file_infos";
     public static final String K_ADD_VIEW_RESULT_TREE_WITH_RECORD_FILE = "add_result_tree_record";
+    public static final String K_ADD_WEBSOCKET_WITH_PLUGIN_PETER_DOORNBOSH = "ws_with_pdoornbosch";
+
 
     private static final Logger LOGGER = Logger.getLogger(HarForJMeter.class.getName());
 
@@ -90,6 +96,7 @@ public class HarForJMeter {
         boolean isRemoveCookie = true;
         boolean isRemoveCacheRequest = true;
         boolean isAddViewTreeForRecord = true;
+        boolean isWebSocketPDoornbosch = false;
         int pageStartNumber = 1;
         int samplerStartNumber = 1;
         String lrwr_info = ""; // for LoadRunner Web Recorder Chrome Extension
@@ -208,6 +215,11 @@ public class HarForJMeter {
             isAddViewTreeForRecord= Boolean.parseBoolean(sTmp);
         }
 
+        sTmp = (String) parseProperties.get(K_ADD_WEBSOCKET_WITH_PLUGIN_PETER_DOORNBOSH);
+        if (sTmp != null) {
+            isWebSocketPDoornbosch= Boolean.parseBoolean(sTmp);
+        }
+
         LOGGER.info("************* PARAMETERS ***************");
         LOGGER.info(K_HAR_IN_OPT + ", harFile=" + harFile);
         LOGGER.info(K_JMETER_FILE_OUT_OPT + ", jmxOut=" + jmxOut);
@@ -223,9 +235,11 @@ public class HarForJMeter {
         LOGGER.info(K_LRWR_USE_INFOS + ", lrwr_info=" + lrwr_info);
         LOGGER.info(K_EXTERNAL_FILE_INFOS + ", fileExternalInfo=" + fileExternalInfo);
         LOGGER.info(K_ADD_VIEW_RESULT_TREE_WITH_RECORD_FILE + ", isAddViewTreeForRecord=" + isAddViewTreeForRecord);
+        LOGGER.info(K_ADD_WEBSOCKET_WITH_PLUGIN_PETER_DOORNBOSH + ", isWebSocketPDoornbosch=" + isWebSocketPDoornbosch);
         LOGGER.info("***************************************");
         try {
-            generateJmxAndRecord(harFile,  jmxOut,createNewTransactionAfterRequestMs,isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude, recordXmlOut, pageStartNumber, samplerStartNumber, lrwr_info, fileExternalInfo, isAddViewTreeForRecord);
+            generateJmxAndRecord(harFile,  jmxOut,createNewTransactionAfterRequestMs,isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude,
+                                    recordXmlOut, pageStartNumber, samplerStartNumber, lrwr_info, fileExternalInfo, isAddViewTreeForRecord, isWebSocketPDoornbosch);
 
             long lEnd = System.currentTimeMillis();
             long lDurationMs = lEnd - lStart;
@@ -261,13 +275,15 @@ public class HarForJMeter {
      * @param lrwr_info what information from the HAR do we use ? The transaction_name or empty. For HAR generated with LoadRunner Web Recorder.
      * @param fileExternalInfo file contains external informations like 2024-05-07T07:56:40.513Z;TRANSACTION;home_page;start
      * @param isAddViewTreeForRecord do we add View Result Tree to view Record.xml file ?
+     * @param isWebSocketPDoornbosch do we find websocket messages and managed websocket with Peter Doornbosch JMeter plugin ?
      * @throws HarReaderException trouble when reading HAR file
      * @throws MalformedURLException trouble to convert String to a URL
      * @throws ParserConfigurationException regex expression is incorrect
      * @throws URISyntaxException trouble to convert String to a URL
      * @throws TransformerException Megatron we have a problem
      */
-    public static void generateJmxAndRecord(String harFile, String jmxOut, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude, String recordXmlOut, int pageStartNumber, int samplerStartNumber, String lrwr_info, String fileExternalInfo, boolean isAddViewTreeForRecord) throws HarReaderException, MalformedURLException, ParserConfigurationException, URISyntaxException, TransformerException {
+    public static void generateJmxAndRecord(String harFile, String jmxOut, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude,
+                                            String recordXmlOut, int pageStartNumber, int samplerStartNumber, String lrwr_info, String fileExternalInfo, boolean isAddViewTreeForRecord, boolean isWebSocketPDoornbosch) throws HarReaderException, MalformedURLException, ParserConfigurationException, URISyntaxException, TransformerException {
         HarForJMeter harForJMeter = new HarForJMeter();
 
         LOGGER.info("Version=" + APPLICATION_VERSION);
@@ -297,13 +313,19 @@ public class HarForJMeter {
             }
         }
 
+        WebSocketRequest webSocketRequest = null;
+        if (isWebSocketPDoornbosch) {
+            webSocketRequest = ManageWebSocket.getWebSocketRequest(harFile);
+        }
+
         LOGGER.info("************ Start of JMX file creation (JMeter script file) **");
-        harForJMeter.convertHarToJmx(har, jmxOut, createNewTransactionAfterRequestMs, isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude, pageStartNumber, samplerStartNumber, listTransactionInfo, isAddViewTreeForRecord, recordXmlOut);
+        harForJMeter.convertHarToJmx(har, jmxOut, createNewTransactionAfterRequestMs, isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude,
+                                        pageStartNumber, samplerStartNumber, listTransactionInfo, isAddViewTreeForRecord, webSocketRequest, recordXmlOut);
         LOGGER.info("************ End of JMX file creation              ************");
 
         if (!recordXmlOut.isEmpty()) {
             LOGGER.info("************ Start of Recording XML file creation ************");
-            harForJMeter.harToRecordXml(har, recordXmlOut, urlFilterToInclude, urlFilterToExclude, pageStartNumber, samplerStartNumber);
+            harForJMeter.harToRecordXml(har, recordXmlOut, urlFilterToInclude, urlFilterToExclude, pageStartNumber, samplerStartNumber, webSocketRequest);
             LOGGER.info("************ End of Recording XML file creation   ************");
         }
     }
@@ -333,15 +355,17 @@ public class HarForJMeter {
      * @param samplerStartNumber the first http sampler number
      * @param listTransactionInfo list with TransactionInfo for HAR generated from LoadRunner Web Recorder
      * @param isAddViewTreeForRecord do we add View Result Tree to view Record.xml file ?
+     * @param webSocketRequest a list of websocket messages
      * @param recordXmlOut the record.xml file to open with a Listener View Result Tree
      * @throws ParserConfigurationException regex expression is incorrect
      * @throws TransformerException Megatron we have a problem
      * @throws URISyntaxException trouble to convert String to a URI
-     * @throws MalformedURLException  trouble to convert String to a URL
      */
-    protected void convertHarToJmx(Har har, String jmxXmlOutFile, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude, int pageStartNumber, int samplerStartNumber, List<TransactionInfo> listTransactionInfo, boolean isAddViewTreeForRecord, String recordXmlOut) throws ParserConfigurationException, TransformerException, URISyntaxException, MalformedURLException {
+    protected void convertHarToJmx(Har har, String jmxXmlOutFile, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude,
+                                   int pageStartNumber, int samplerStartNumber, List<TransactionInfo> listTransactionInfo, boolean isAddViewTreeForRecord, WebSocketRequest webSocketRequest, String recordXmlOut) throws ParserConfigurationException, TransformerException, URISyntaxException {
         XmlJmx xmlJmx = new XmlJmx();
-        Document jmxDocument = xmlJmx.convertHarToJmxXml(har, createNewTransactionAfterRequestMs, isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude, pageStartNumber, samplerStartNumber, listTransactionInfo, isAddViewTreeForRecord, recordXmlOut);
+        Document jmxDocument = xmlJmx.convertHarToJmxXml(har, createNewTransactionAfterRequestMs, isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude,
+                                                            pageStartNumber, samplerStartNumber, listTransactionInfo, isAddViewTreeForRecord, webSocketRequest, recordXmlOut);
 
         xmlJmx.saveXmFile(jmxDocument, jmxXmlOutFile);
     }
@@ -354,14 +378,15 @@ public class HarForJMeter {
      * @param urlFilterToExclude the regex filter to exclude url
      * @param pageStartNumber the first page number
      * @param samplerStartNumber the first http sampler number
+     * @param webSocketRequest a list of websocket messages
      * @throws ParserConfigurationException regex expression is incorrect
      * @throws TransformerException Megatron we have a problem
      * @throws URISyntaxException  trouble to convert String to a URI
      * @throws MalformedURLException trouble to convert String to a URL
      */
-    protected void harToRecordXml(Har har, String jmxXmlOutFile, String urlFilterToInclude, String urlFilterToExclude, int pageStartNumber, int samplerStartNumber) throws ParserConfigurationException, TransformerException, URISyntaxException, MalformedURLException {
+    protected void harToRecordXml(Har har, String jmxXmlOutFile, String urlFilterToInclude, String urlFilterToExclude, int pageStartNumber, int samplerStartNumber, WebSocketRequest webSocketRequest) throws ParserConfigurationException, TransformerException, URISyntaxException, MalformedURLException {
         Har2TestResultsXml har2TestResultsXml = new Har2TestResultsXml();
-        Document jmxDocument = har2TestResultsXml.convertHarToTestResultXml(har, urlFilterToInclude, urlFilterToExclude, samplerStartNumber);
+        Document jmxDocument = har2TestResultsXml.convertHarToTestResultXml(har, urlFilterToInclude, urlFilterToExclude, samplerStartNumber, webSocketRequest);
 
         XmlJmx.saveXmFile(jmxDocument, jmxXmlOutFile);
 
@@ -383,7 +408,7 @@ public class HarForJMeter {
         LOGGER.fine("boundary=<" + boundary + ">");
         String text = harPostData.getText();
         String[] tabParams = StringUtils.splitByWholeSeparator(text,"--" + boundary + "\r\n");
-        LOGGER.info("tabParams.length=" + tabParams.length);
+        LOGGER.info("Number of parameters in Multi-Parts=" + tabParams.length);
 
         for (int i = 0; i < tabParams.length; i++) {
             String paramInter = tabParams[i];
@@ -510,6 +535,12 @@ public class HarForJMeter {
                 .build();
         options.addOption(addViewResultTreeForRecordOpt);
 
+        Option addWsPluginPeterDoornboshOpt = Option.builder(K_ADD_WEBSOCKET_WITH_PLUGIN_PETER_DOORNBOSH).argName(K_ADD_WEBSOCKET_WITH_PLUGIN_PETER_DOORNBOSH).hasArg(true)
+                .required(false)
+                .desc("Optional boolean, Manage websocket messages with the JMeter plugin from Peter DOORNBOSH (default false), if true need the plugin from Peter DOORNBOSH to open the generated script")
+                .build();
+        options.addOption(addWsPluginPeterDoornboshOpt);
+
         return options;
     }
 
@@ -589,6 +620,11 @@ public class HarForJMeter {
         if (line.hasOption(K_ADD_VIEW_RESULT_TREE_WITH_RECORD_FILE)) {
             properties.setProperty(K_ADD_VIEW_RESULT_TREE_WITH_RECORD_FILE, line.getOptionValue(K_ADD_VIEW_RESULT_TREE_WITH_RECORD_FILE));
         }
+
+        if (line.hasOption(K_ADD_WEBSOCKET_WITH_PLUGIN_PETER_DOORNBOSH)) {
+            properties.setProperty(K_ADD_WEBSOCKET_WITH_PLUGIN_PETER_DOORNBOSH, line.getOptionValue(K_ADD_WEBSOCKET_WITH_PLUGIN_PETER_DOORNBOSH));
+        }
+
         return properties;
     }
 
@@ -601,7 +637,7 @@ public class HarForJMeter {
         String footer = "E.g : java -jar har-for-jmeter-<version>-jar-with-dependencies.jar -" + K_HAR_IN_OPT + " myhar.har -" + K_JMETER_FILE_OUT_OPT + " scriptout.jmx -"
                 + K_RECORD_FILE_OUT_OPT + " recording.xml -" + K_ADD_VIEW_RESULT_TREE_WITH_RECORD_FILE + " true -" + K_CREATE_NEW_TC_AFTER_MS_OPT + " 5000 -"
                 + K_ADD_PAUSE_OPT + " true -" + K_REGEX_FILTER_INCLUDE_OPT + " \"https://mysite/.*\" -" + K_REGEX_FILTER_EXCLUDE_OPT + " \"https://notmysite/*\" -"
-                + K_PAGE_START_NUMBER + " 50 -" + K_SAMPLER_START_NUMBER + " 250 \n";
+                + K_PAGE_START_NUMBER + " 50 -" + K_SAMPLER_START_NUMBER + " 250 -" + K_ADD_WEBSOCKET_WITH_PLUGIN_PETER_DOORNBOSH + " false \n";
 
         formatter.printHelp(120, HarForJMeter.class.getName(),
                 HarForJMeter.class.getName(), options, footer, true);

@@ -16,6 +16,7 @@
 
 package io.github.vdaburon.jmeter.har;
 
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -31,6 +32,29 @@ public class Utils {
         sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
         String sDateIso = sdf.format(calendar.getTime());
         return sDateIso;
+    }
+
+
+
+    public static String doubleEpocMicroToIsoFormat(double epocSecMicro) {
+        // dTimeMicro
+        double dInterMilli = (epocSecMicro * 1000);
+        long epocMillis = (long) dInterMilli;
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(epocMillis);
+        // 2024-05-03T14:30:42.271Z
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        String sDateIso = sdf.format(calendar.getTime());
+        return sDateIso;
+    }
+
+    public static long dateIsoFormatToTimeLong(String  sDateIso) throws ParseException {
+        // 2024-05-03T14:30:42.271Z
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        Date dateIso = sdf.parse(sDateIso);
+        return dateIso.getTime();
     }
 
     /**

@@ -62,7 +62,7 @@ import java.util.regex.PatternSyntaxException;
 
 public class HarForJMeter {
 
-    public static final String APPLICATION_VERSION = "7.0";
+    public static final String APPLICATION_VERSION = "7.1";
 
     // CLI OPTIONS
     public static final String K_HAR_IN_OPT = "har_in";

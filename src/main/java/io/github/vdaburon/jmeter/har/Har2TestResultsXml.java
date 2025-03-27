@@ -115,6 +115,11 @@ public class Har2TestResultsXml {
             URI uri = new URI(sURl);
             String scheme = uri.getScheme();
 
+            if ("data".equalsIgnoreCase(scheme)) {
+                // jmeter don't support data:image protocole
+                isAddThisRequest = false;
+            }
+
             if ("ws".equalsIgnoreCase(scheme) || "wss".equalsIgnoreCase(scheme)) {
                  if (isAddThisRequest && webSocketRequest != null) {
                     num = WebSocketPDoornboshResultXml.createWsSample(document, eltTestResults, harEntryInter, num, webSocketRequest);
@@ -497,7 +502,7 @@ public class Har2TestResultsXml {
             sText = "bin";
         }
 
-        if("text".equals(sText) && urlPath.contains(".")) {
+        if("text".equals(sText) &&  urlPath != null && urlPath.contains(".")) {
             // some time the mime type is incorrect so use extension to find if the content is text or bin
             String extension = urlPath.substring(urlPath.lastIndexOf(".") + 1);
             if (extension != null && !extension.isEmpty()) {

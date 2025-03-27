@@ -257,6 +257,12 @@ public class XmlJmx {
                         httpSamplernum++;
                         String sUrl = harRequest.getUrl();
                         String startUrl = sUrl.substring(0, Math.min(2, sUrl.length())); // ht or ws
+
+                        if ("da".equalsIgnoreCase(startUrl)) { //data
+                            // jmeter don't support data:image protocole
+                            continue;
+                        }
+
                         Element sampler = null;
                         boolean isWebSocket = false;
                         if ("ws".equalsIgnoreCase(startUrl) && webSocketRequest != null) { // ws or wss
@@ -1466,6 +1472,11 @@ public class XmlJmx {
 
                 if ("Content-Length".equalsIgnoreCase(headerName)) {
                     // the Content-length is computed by JMeter when the request is created, so remove it
+                    addThisHearder = false;
+                }
+
+                if (headerName != null && !headerName.isEmpty() && headerName.startsWith(":")) {
+                    // don't add headers from http/2 protocol starting with ':', likes :  ":authority" or ":method" or ":path" or ":scheme"
                     addThisHearder = false;
                 }
 

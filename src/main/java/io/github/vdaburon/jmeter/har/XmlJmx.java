@@ -77,7 +77,7 @@ public class XmlJmx {
     private static final String K_VIEW_RESULT_TREE_COMMENT = "For The Recording XML File Created";
     private static final Logger LOGGER = Logger.getLogger(XmlJmx.class.getName());
 
-    protected Document convertHarToJmxXml(Har har, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude, int pageStartNumber, int samplerStartNumber, List<TransactionInfo> listTransactionInfo, boolean isAddViewTreeForRecord, WebSocketRequest webSocketRequest, String recordXmlOut) throws ParserConfigurationException, URISyntaxException {
+    protected Document convertHarToJmxXml(Har har, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude, int pageStartNumber, int samplerStartNumber, List<TransactionInfo> listTransactionInfo, boolean isAddViewTreeForRecord, WebSocketRequest webSocketRequest, String recordXmlOut, String removeHeaders) throws ParserConfigurationException, URISyntaxException {
 
         Pattern patternUrlInclude = null;
         if (!urlFilterToInclude.isEmpty()) {
@@ -87,6 +87,14 @@ public class XmlJmx {
         Pattern patternUrlExclude = null;
         if (!urlFilterToExclude.isEmpty()) {
             patternUrlExclude = Pattern.compile(urlFilterToExclude);
+        }
+
+        String[] tabRemoveHeaders = null;
+        if (!removeHeaders.isEmpty()) {
+            tabRemoveHeaders = removeHeaders.split(",");
+            for (int i = 0; i < tabRemoveHeaders.length; i++) {
+                tabRemoveHeaders[i] = tabRemoveHeaders[i].trim();
+            }
         }
 
         DocumentBuilderFactory documentFactory = DocumentBuilderFactory.newInstance();
@@ -177,7 +185,7 @@ public class XmlJmx {
             try {
                 URI pageUrl = new URI(pageInter.getTitle());
                 pageTitle = pageUrl.getPath();
-            } catch (java.net.URISyntaxException ex) {
+            } catch (URISyntaxException ex) {
                 // the title is not a valid uri, use directly the title
                 pageTitle = pageInter.getTitle();
             }
@@ -338,7 +346,7 @@ public class XmlJmx {
                         Element hashTreeAfterHttpSampler = createHashTree(document);
                         hashTreeAfterTc.appendChild(hashTreeAfterHttpSampler);
 
-                        Element headers = createHeaderManager(document, harRequest, isRemoveCookie, isRemoveCacheRequest);
+                        Element headers = createHeaderManager(document, harRequest, isRemoveCookie, isRemoveCacheRequest, tabRemoveHeaders);
                         hashTreeAfterHttpSampler.appendChild(headers);
                         Element hashTreeAfterHeaders = createHashTree(document);
                         hashTreeAfterHttpSampler.appendChild(hashTreeAfterHeaders);
@@ -1383,7 +1391,7 @@ public class XmlJmx {
     }
 
 
-    protected Element createHeaderManager(Document document, HarRequest harRequest, boolean isRemoveCookie, boolean isRemoveCacheRequest) {
+    protected Element createHeaderManager(Document document, HarRequest harRequest, boolean isRemoveCookie, boolean isRemoveCacheRequest, String[] tabRemoveHeaders) {
         /*
         <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager" enabled="true">
              <collectionProp name="HeaderManager.headers">
@@ -1423,12 +1431,12 @@ public class XmlJmx {
         attreltHeadManagerenabled.setValue("true");
         eltHeadManager.setAttributeNode(attreltHeadManagerenabled);
 
-        Element headers = createHttpSamplerHeaders(document, harRequest, isRemoveCookie, isRemoveCacheRequest);
+        Element headers = createHttpSamplerHeaders(document, harRequest, isRemoveCookie, isRemoveCacheRequest, tabRemoveHeaders);
         eltHeadManager.appendChild(headers);
         return eltHeadManager;
     }
 
-    protected Element createHttpSamplerHeaders(Document document, HarRequest harRequest, boolean isRemoveCookie, boolean isRemoveCacheRequest) {
+    protected Element createHttpSamplerHeaders(Document document, HarRequest harRequest, boolean isRemoveCookie, boolean isRemoveCacheRequest, String[] tabRemoveHeaders) {
         /*
             <collectionProp name="HeaderManager.headers">
                 <elementProp name="Referer" elementType="Header">
@@ -1454,33 +1462,43 @@ public class XmlJmx {
             for (HarHeader header : harRequest.getHeaders()) {
                 String headerName = header.getName();
                 String headerValue = header.getValue();
-                boolean addThisHearder = true;
+                boolean addThisHeader = true;
 
                 if ("Cookie".equalsIgnoreCase(headerName)) {
                     if (isRemoveCookie) {
                         // no cookie because add a Cookie Manager
-                        addThisHearder = false;
+                        addThisHeader = false;
                     }
                 }
 
                 if ("If-Modified-Since".equalsIgnoreCase(headerName) || "If-None-Match".equalsIgnoreCase(headerName) || "If-Last-Modified".equalsIgnoreCase(headerName)) {
                     if (isRemoveCacheRequest) {
                         // no cache If-Modified-Since or If-None-Match because add a Cache Manager
-                        addThisHearder = false;
+                        addThisHeader = false;
                     }
                 }
 
                 if ("Content-Length".equalsIgnoreCase(headerName)) {
                     // the Content-length is computed by JMeter when the request is created, so remove it
-                    addThisHearder = false;
+                    addThisHeader = false;
                 }
 
                 if (headerName != null && !headerName.isEmpty() && headerName.startsWith(":")) {
                     // don't add headers from http/2 protocol starting with ':', likes :  ":authority" or ":method" or ":path" or ":scheme"
-                    addThisHearder = false;
+                    addThisHeader = false;
                 }
 
-                if(addThisHearder) {
+                if (tabRemoveHeaders !=  null && headerName != null && !headerName.isEmpty()) {
+                    for (int i = 0; i < tabRemoveHeaders.length; i++) {
+                        String headerToRemove = tabRemoveHeaders[i];
+                        if (headerToRemove.equalsIgnoreCase(headerName)) {
+                            addThisHeader = false;
+                            break;
+                        }
+                    }
+                }
+
+                if (addThisHeader) {
                     Element elementProp = createElementProp(document, headerName, "Header", null, null, null);
 
                     Element stringProp1 = createProperty(document, "stringProp", "Header.name", headerName);

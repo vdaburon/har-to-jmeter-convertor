@@ -62,7 +62,7 @@ import java.util.regex.PatternSyntaxException;
 
 public class HarForJMeter {
 
-    public static final String APPLICATION_VERSION = "7.1";
+    public static final String APPLICATION_VERSION = "8.0";
 
     // CLI OPTIONS
     public static final String K_HAR_IN_OPT = "har_in";
@@ -81,6 +81,7 @@ public class HarForJMeter {
     public static final String K_EXTERNAL_FILE_INFOS = "external_file_infos";
     public static final String K_ADD_VIEW_RESULT_TREE_WITH_RECORD_FILE = "add_result_tree_record";
     public static final String K_ADD_WEBSOCKET_WITH_PLUGIN_PETER_DOORNBOSH = "ws_with_pdoornbosch";
+    public static final String K_REMOVE_HEADERS_OPT = "remove_headers";
 
 
     private static final Logger LOGGER = Logger.getLogger(HarForJMeter.class.getName());
@@ -101,6 +102,7 @@ public class HarForJMeter {
         int samplerStartNumber = 1;
         String lrwr_info = ""; // for LoadRunner Web Recorder Chrome Extension
         String fileExternalInfo = ""; // csv file name contains infos like : 2024-05-07T07:56:40.513Z;TRANSACTION;welcome_page;start
+        String removeHeaders = ""; // a list of http headers to remove with comma separtor, e.g:"User-Agent,Pragma"
 
 
         long lStart = System.currentTimeMillis();
@@ -220,6 +222,11 @@ public class HarForJMeter {
             isWebSocketPDoornbosch= Boolean.parseBoolean(sTmp);
         }
 
+        sTmp = (String) parseProperties.get(K_REMOVE_HEADERS_OPT);
+        if (sTmp != null) {
+            removeHeaders = sTmp;
+        }
+
         LOGGER.info("************* PARAMETERS ***************");
         LOGGER.info(K_HAR_IN_OPT + ", harFile=" + harFile);
         LOGGER.info(K_JMETER_FILE_OUT_OPT + ", jmxOut=" + jmxOut);
@@ -230,6 +237,7 @@ public class HarForJMeter {
         LOGGER.info(K_REGEX_FILTER_EXCLUDE_OPT + ", urlFilterToExclude=" + urlFilterToExclude);
         LOGGER.info(K_REMOVE_COOKIE_OPT + ", isRemoveCookie=" + isRemoveCookie);
         LOGGER.info(K_REMOVE_CACHE_REQUEST_OPT + ", isRemoveCacheRequest=" + isRemoveCacheRequest);
+        LOGGER.info(K_REMOVE_HEADERS_OPT + ", removeHeaders=" + removeHeaders);
         LOGGER.info(K_PAGE_START_NUMBER + ", pageStartNumber=" + pageStartNumber);
         LOGGER.info(K_SAMPLER_START_NUMBER + ", samplerStartNumber=" + samplerStartNumber);
         LOGGER.info(K_LRWR_USE_INFOS + ", lrwr_info=" + lrwr_info);
@@ -239,7 +247,7 @@ public class HarForJMeter {
         LOGGER.info("***************************************");
         try {
             generateJmxAndRecord(harFile,  jmxOut,createNewTransactionAfterRequestMs,isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude,
-                                    recordXmlOut, pageStartNumber, samplerStartNumber, lrwr_info, fileExternalInfo, isAddViewTreeForRecord, isWebSocketPDoornbosch);
+                                    recordXmlOut, pageStartNumber, samplerStartNumber, lrwr_info, fileExternalInfo, isAddViewTreeForRecord, isWebSocketPDoornbosch, removeHeaders);
 
             long lEnd = System.currentTimeMillis();
             long lDurationMs = lEnd - lStart;
@@ -276,6 +284,7 @@ public class HarForJMeter {
      * @param fileExternalInfo file contains external informations like 2024-05-07T07:56:40.513Z;TRANSACTION;home_page;start
      * @param isAddViewTreeForRecord do we add View Result Tree to view Record.xml file ?
      * @param isWebSocketPDoornbosch do we find websocket messages and managed websocket with Peter Doornbosch JMeter plugin ?
+     * @param removeHeaders to remove a list a http headers
      * @throws HarReaderException trouble when reading HAR file
      * @throws MalformedURLException trouble to convert String to a URL
      * @throws ParserConfigurationException regex expression is incorrect
@@ -283,7 +292,7 @@ public class HarForJMeter {
      * @throws TransformerException Megatron we have a problem
      */
     public static void generateJmxAndRecord(String harFile, String jmxOut, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude,
-                                            String recordXmlOut, int pageStartNumber, int samplerStartNumber, String lrwr_info, String fileExternalInfo, boolean isAddViewTreeForRecord, boolean isWebSocketPDoornbosch) throws HarReaderException, MalformedURLException, ParserConfigurationException, URISyntaxException, TransformerException {
+                                            String recordXmlOut, int pageStartNumber, int samplerStartNumber, String lrwr_info, String fileExternalInfo, boolean isAddViewTreeForRecord, boolean isWebSocketPDoornbosch, String removeHeaders) throws HarReaderException, MalformedURLException, ParserConfigurationException, URISyntaxException, TransformerException {
         HarForJMeter harForJMeter = new HarForJMeter();
 
         LOGGER.info("Version=" + APPLICATION_VERSION);
@@ -320,7 +329,7 @@ public class HarForJMeter {
 
         LOGGER.info("************ Start of JMX file creation (JMeter script file) **");
         harForJMeter.convertHarToJmx(har, jmxOut, createNewTransactionAfterRequestMs, isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude,
-                                        pageStartNumber, samplerStartNumber, listTransactionInfo, isAddViewTreeForRecord, webSocketRequest, recordXmlOut);
+                                        pageStartNumber, samplerStartNumber, listTransactionInfo, isAddViewTreeForRecord, webSocketRequest, recordXmlOut, removeHeaders);
         LOGGER.info("************ End of JMX file creation              ************");
 
         if (!recordXmlOut.isEmpty()) {
@@ -357,15 +366,16 @@ public class HarForJMeter {
      * @param isAddViewTreeForRecord do we add View Result Tree to view Record.xml file ?
      * @param webSocketRequest a list of websocket messages
      * @param recordXmlOut the record.xml file to open with a Listener View Result Tree
+     * @param removeHeaders to remove a list a http headers
      * @throws ParserConfigurationException regex expression is incorrect
      * @throws TransformerException Megatron we have a problem
      * @throws URISyntaxException trouble to convert String to a URI
      */
     protected void convertHarToJmx(Har har, String jmxXmlOutFile, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude,
-                                   int pageStartNumber, int samplerStartNumber, List<TransactionInfo> listTransactionInfo, boolean isAddViewTreeForRecord, WebSocketRequest webSocketRequest, String recordXmlOut) throws ParserConfigurationException, TransformerException, URISyntaxException {
+                                   int pageStartNumber, int samplerStartNumber, List<TransactionInfo> listTransactionInfo, boolean isAddViewTreeForRecord, WebSocketRequest webSocketRequest, String recordXmlOut, String removeHeaders) throws ParserConfigurationException, TransformerException, URISyntaxException {
         XmlJmx xmlJmx = new XmlJmx();
         Document jmxDocument = xmlJmx.convertHarToJmxXml(har, createNewTransactionAfterRequestMs, isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude,
-                                                            pageStartNumber, samplerStartNumber, listTransactionInfo, isAddViewTreeForRecord, webSocketRequest, recordXmlOut);
+                                                            pageStartNumber, samplerStartNumber, listTransactionInfo, isAddViewTreeForRecord, webSocketRequest, recordXmlOut, removeHeaders);
 
         xmlJmx.saveXmFile(jmxDocument, jmxXmlOutFile);
     }
@@ -541,6 +551,11 @@ public class HarForJMeter {
                 .build();
         options.addOption(addWsPluginPeterDoornboshOpt);
 
+        Option removeHeardersOpt = Option.builder(K_REMOVE_HEADERS_OPT).argName(K_REMOVE_HEADERS_OPT).hasArg(true)
+                .required(false)
+                .desc("Remove a list of headers (comma separator, case insensitive), e.g:User-Agent,Pragma,X-TOKEN")
+                .build();
+        options.addOption(removeHeardersOpt);
         return options;
     }
 
@@ -625,6 +640,10 @@ public class HarForJMeter {
             properties.setProperty(K_ADD_WEBSOCKET_WITH_PLUGIN_PETER_DOORNBOSH, line.getOptionValue(K_ADD_WEBSOCKET_WITH_PLUGIN_PETER_DOORNBOSH));
         }
 
+        if (line.hasOption(K_REMOVE_HEADERS_OPT)) {
+            properties.setProperty(K_REMOVE_HEADERS_OPT, line.getOptionValue(K_REMOVE_HEADERS_OPT));
+        }
+
         return properties;
     }
 
@@ -637,7 +656,7 @@ public class HarForJMeter {
         String footer = "E.g : java -jar har-for-jmeter-<version>-jar-with-dependencies.jar -" + K_HAR_IN_OPT + " myhar.har -" + K_JMETER_FILE_OUT_OPT + " scriptout.jmx -"
                 + K_RECORD_FILE_OUT_OPT + " recording.xml -" + K_ADD_VIEW_RESULT_TREE_WITH_RECORD_FILE + " true -" + K_CREATE_NEW_TC_AFTER_MS_OPT + " 5000 -"
                 + K_ADD_PAUSE_OPT + " true -" + K_REGEX_FILTER_INCLUDE_OPT + " \"https://mysite/.*\" -" + K_REGEX_FILTER_EXCLUDE_OPT + " \"https://notmysite/*\" -"
-                + K_PAGE_START_NUMBER + " 50 -" + K_SAMPLER_START_NUMBER + " 250 -" + K_ADD_WEBSOCKET_WITH_PLUGIN_PETER_DOORNBOSH + " false \n";
+                + K_PAGE_START_NUMBER + " 50 -" + K_SAMPLER_START_NUMBER + " 250 -" + K_ADD_WEBSOCKET_WITH_PLUGIN_PETER_DOORNBOSH + " false -" + K_REMOVE_HEADERS_OPT +  " \"User-Agent,Pragma\" \n";
 
         formatter.printHelp(120, HarForJMeter.class.getName(),
                 HarForJMeter.class.getName(), options, footer, true);

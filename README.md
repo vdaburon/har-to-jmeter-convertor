@@ -123,6 +123,7 @@ Parameters are :
     * e.g. 5000 for 5 sec between 2 urls
 * remove_cookie, remove header with cookie because use a Cookie Manager (default true)
 * remove_cache_request, remove request cache header because use a Cache Manager (default true)
+* remove_headers, remove a list of http headers (comma separator and case insensitive), e.g:"User-Agent,Pragma,X-TOKEN"
 * page_start_number, set the start page number for partial recording (default 1, must be an integer > 0)
 * sampler_start_number, set the start sampler number for partial recording (default 1, must be an integer > 0)
 * use_lrwr_infos, the har file has been generated with LoadRunner Web Recorder Chrome extension and contains Transaction Name, expected values : 'transaction_name' or don't add this parameter
@@ -137,13 +138,13 @@ Help to see all parameters :
 <pre>
 C:\apache-jmeter\bin&gt;java -jar har-to-jmeter-convertor-7.0-jar-with-dependencies.jar -help
 
-INFOS: Start main
 usage: io.github.vdaburon.jmeter.har.HarForJMeter [-add_pause &lt;add_pause&gt;] [-add_result_tree_record
        &lt;add_result_tree_record&gt;] [-external_file_infos &lt;external_file_infos&gt;] [-filter_exclude &lt;filter_exclude&gt;]
        [-filter_include &lt;filter_include&gt;] -har_in &lt;har_in&gt; [-help] -jmx_out &lt;jmx_out&gt; [-new_tc_pause &lt;new_tc_pause&gt;]
        [-page_start_number &lt;page_start_number&gt;] [-record_out &lt;record_out&gt;] [-remove_cache_request
-       &lt;remove_cache_request&gt;] [-remove_cookie &lt;remove_cookie&gt;] [-sampler_start_number &lt;sampler_start_number&gt;]
-       [-use_lrwr_infos &lt;use_lrwr_infos&gt;] [-ws_with_pdoornbosch &lt;ws_with_pdoornbosch&gt;]
+       &lt;remove_cache_request&gt;] [-remove_cookie &lt;remove_cookie&gt;] [-remove_headers &lt;remove_headers&gt;]
+       [-sampler_start_number &lt;sampler_start_number&gt;] [-use_lrwr_infos &lt;use_lrwr_infos&gt;] [-ws_with_pdoornbosch
+       &lt;ws_with_pdoornbosch&gt;]
 io.github.vdaburon.jmeter.har.HarForJMeter
  -add_pause &lt;add_pause&gt;                             Optional boolean, add Flow Control Action Pause after Transaction
                                                     Controller (default true)
@@ -166,6 +167,8 @@ io.github.vdaburon.jmeter.har.HarForJMeter
                                                     true because add a Cache Manager)
  -remove_cookie &lt;remove_cookie&gt;                     Optional boolean, remove cookie in http header (default true because
                                                     add a Cookie Manager)
+ -remove_headers &lt;remove_headers&gt;                   Remove a list of headers (comma separator, case insensitive),
+                                                    e.g:User-Agent,Pragma,X-TOKEN
  -sampler_start_number &lt;sampler_start_number&gt;       Optional, the start sampler number for partial recording (default 1)
  -use_lrwr_infos &lt;use_lrwr_infos&gt;                   Optional, the har file has been generated with LoadRunner Web
                                                     Recorder and contains Transaction Name, expected value :
@@ -176,6 +179,7 @@ io.github.vdaburon.jmeter.har.HarForJMeter
 E.g : java -jar har-for-jmeter-&lt;version&gt;-jar-with-dependencies.jar -har_in myhar.har -jmx_out scriptout.jmx -record_out
 recording.xml -add_result_tree_record true -new_tc_pause 5000 -add_pause true -filter_include "https://mysite/.*"
 -filter_exclude "https://notmysite/*" -page_start_number 50 -sampler_start_number 250 -ws_with_pdoornbosch false
+-remove_headers "User-Agent,Pragma"
 
 </pre>
 
@@ -194,13 +198,15 @@ The maven groupId, artifactId and version, this plugin is in the **Maven Central
 ```xml
 <groupId>io.github.vdaburon</groupId>
 <artifactId>har-to-jmeter-convertor</artifactId>
-<version>7.1</version>
+<version>8.0</version>
 ```
 
 ## License
 Licensed under the Apache License, Version 2.0
 
 ## Versions
+Version 8.0 date 2025-11-22, Add new parameter <code>-remove_headers</code> remove a list of http headers (comma separator, case insensitive), e.g: <code>-remove_headers "User-Agent,Pragma,X-TOKEN"</code>
+
 Version 7.1 date 2025-03-27, Remove request headers from HTTP/2, these headers start with ':' likes ":authority", ":method", ":path" or ":scheme". Don't create httpSampler for url "data:".
 
 Version 7.0 date 2025-02-27, Manage the websocket messages with 'WebSocket Samplers by Peter Doornbosch', add new boolean parameter 'ws_with_pdoornbosch' (default false).

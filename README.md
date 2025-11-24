@@ -6,7 +6,12 @@
 </p>
 
 # har-to-jmeter-convertor
-# Convert a HAR file to a JMeter script and a Record XML file.
+# Convert a HAR (Http ARchive) file to a JMeter script and a Record XML file.
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.vdaburon/har-to-jmeter-convertor)](https://central.sonatype.com/artifact/io.github.vdaburon/har-to-jmeter-convertor)
+[![Apache License](http://img.shields.io/badge/license-Apache-green.svg)](https://github.com/vdaburon/CreateHtmlForFilesInDirectory/blob/main/LICENSE)
+![Free](https://img.shields.io/badge/free-open--source-green.svg)
+[![Apache JMeter](https://img.shields.io/badge/Apache%20JMeter-green)](https://jmeter.apache.org/)
+
 
 An article about motivations to create this tool: https://dzone.com/articles/convert-a-har-file-to-jmeter-script
 
@@ -185,11 +190,11 @@ recording.xml -add_result_tree_record true -new_tc_pause 5000 -add_pause true -f
 
 
 <pre>
-C:\apache-jmeter\bin>java -jar har-to-jmeter-convertor-7.1-jar-with-dependencies.jar -har_in "myhar.har" -jmx_out "script_out.jmx" -filter_include "https://mysite.com/.*" -filter_exclude "https://notmysite.com/.*" -add_pause true -new_tc_pause 5000
+C:\apache-jmeter\bin>java -jar har-to-jmeter-convertor-8.0-jar-with-dependencies.jar -har_in "myhar.har" -jmx_out "script_out.jmx" -filter_include "https://mysite.com/.*" -filter_exclude "https://notmysite.com/.*" -add_pause true -new_tc_pause 5000
 </pre>
 
 <pre>
-/var/opt/apache-jmeter/bin>java -jar har-to-jmeter-convertor-7.1-jar-with-dependencies.jar -har_in "myhar.har" -jmx_out "script_out.jmx" -record_out "record.xml" -add_pause true -new_tc_pause 5000
+/var/opt/apache-jmeter/bin>java -jar har-to-jmeter-convertor-8.0-jar-with-dependencies.jar -har_in "myhar.har" -jmx_out "script_out.jmx" -record_out "record.xml" -add_pause true -new_tc_pause 5000
 </pre>
 
 ## Usage Maven

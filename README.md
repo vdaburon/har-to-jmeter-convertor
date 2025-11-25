@@ -198,7 +198,7 @@ C:\apache-jmeter\bin>java -jar har-to-jmeter-convertor-8.0-jar-with-dependencies
 </pre>
 
 ## Usage Maven
-The maven groupId, artifactId and version, this plugin is in the **Maven Central Repository** [![Maven Central har-convertor-jmeter-plugin](https://maven-badges.herokuapp.com/maven-central/io.github.vdaburon/har-to-jmeter-convertor/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.vdaburon/har-to-jmeter-convertorr)
+The maven groupId, artifactId and version, this plugin is in the **Maven Central Repository** [![Maven Central](https://img.shields.io/maven-central/v/io.github.vdaburon/har-to-jmeter-convertor)](https://central.sonatype.com/artifact/io.github.vdaburon/har-to-jmeter-convertor)
 
 ```xml
 <groupId>io.github.vdaburon</groupId>

@@ -25,8 +25,6 @@ import de.sstoehr.harreader.model.HarPostDataParam;
 import de.sstoehr.harreader.model.HarRequest;
 
 import io.github.vdaburon.jmeter.har.external.ManageExternalFile;
-import io.github.vdaburon.jmeter.har.lrwr.HarLrTransactions;
-import io.github.vdaburon.jmeter.har.lrwr.ManageLrwr;
 import io.github.vdaburon.jmeter.har.common.TransactionInfo;
 import io.github.vdaburon.jmeter.har.websocket.ManageWebSocket;
 import io.github.vdaburon.jmeter.har.websocket.WebSocketRequest; 
@@ -64,7 +62,7 @@ import java.util.regex.PatternSyntaxException;
 
 public class HarForJMeter {
 
-    public static final String APPLICATION_VERSION = "9.0";
+    public static final String APPLICATION_VERSION = "9.1";
 
     // CLI OPTIONS
     public static final String K_HAR_IN_OPT = "har_in";
@@ -78,8 +76,6 @@ public class HarForJMeter {
     public static final String K_REMOVE_CACHE_REQUEST_OPT = "remove_cache_request";
     public static final String K_PAGE_START_NUMBER = "page_start_number";
     public static final String K_SAMPLER_START_NUMBER = "sampler_start_number";
-    public static final String K_LRWR_USE_INFOS = "use_lrwr_infos";
-    public static final String K_LRWR_USE_TRANSACTION_NAME = "transaction_name";
     public static final String K_EXTERNAL_FILE_INFOS = "external_file_infos";
     public static final String K_ADD_VIEW_RESULT_TREE_WITH_RECORD_FILE = "add_result_tree_record";
     public static final String K_ADD_WEBSOCKET_WITH_PLUGIN_PETER_DOORNBOSH = "ws_with_pdoornbosch";
@@ -104,7 +100,6 @@ public class HarForJMeter {
         boolean isWebSocketPDoornbosch = false;
         int pageStartNumber = 1;
         int samplerStartNumber = 1;
-        String lrwr_info = ""; // for LoadRunner Web Recorder Chrome Extension
         String fileExternalInfo = ""; // csv file name contains infos like : 2024-05-07T07:56:40.513Z;TRANSACTION;welcome_page;start
         String removeHeaders = ""; // a list of http headers to remove with comma separtor, e.g:"User-Agent,Pragma"
 		int jacksonParserStringMax = K_JACKSON_PARSER_STRING_MAX_DEFAULT;
@@ -212,17 +207,6 @@ public class HarForJMeter {
             samplerStartNumber = 1;
         }
 
-        sTmp = (String) parseProperties.get(K_LRWR_USE_INFOS);
-        if (sTmp != null) {
-            lrwr_info= sTmp;
-            if (!lrwr_info.isEmpty() && !K_LRWR_USE_TRANSACTION_NAME.equalsIgnoreCase(sTmp)) {
-                LOGGER.warning("This Parameter " + K_LRWR_USE_INFOS + " is not an expected value, value = " + sTmp + ", set to empty (default)");
-                lrwr_info = "";
-            }
-        } else {
-            lrwr_info = "";
-        }
-
         sTmp = (String) parseProperties.get(K_EXTERNAL_FILE_INFOS);
         if (sTmp != null) {
             fileExternalInfo = sTmp;
@@ -257,7 +241,6 @@ public class HarForJMeter {
         LOGGER.info(K_REMOVE_HEADERS_OPT + ", removeHeaders=" + removeHeaders);
         LOGGER.info(K_PAGE_START_NUMBER + ", pageStartNumber=" + pageStartNumber);
         LOGGER.info(K_SAMPLER_START_NUMBER + ", samplerStartNumber=" + samplerStartNumber);
-        LOGGER.info(K_LRWR_USE_INFOS + ", lrwr_info=" + lrwr_info);
         LOGGER.info(K_EXTERNAL_FILE_INFOS + ", fileExternalInfo=" + fileExternalInfo);
         LOGGER.info(K_ADD_VIEW_RESULT_TREE_WITH_RECORD_FILE + ", isAddViewTreeForRecord=" + isAddViewTreeForRecord);
         LOGGER.info(K_ADD_WEBSOCKET_WITH_PLUGIN_PETER_DOORNBOSH + ", isWebSocketPDoornbosch=" + isWebSocketPDoornbosch);
@@ -265,7 +248,7 @@ public class HarForJMeter {
         LOGGER.info("***************************************");
         try {
             generateJmxAndRecord(harFile,  jmxOut,createNewTransactionAfterRequestMs,isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude,
-                                    recordXmlOut, pageStartNumber, samplerStartNumber, lrwr_info, fileExternalInfo, isAddViewTreeForRecord, isWebSocketPDoornbosch, removeHeaders);
+                                    recordXmlOut, pageStartNumber, samplerStartNumber, fileExternalInfo, isAddViewTreeForRecord, isWebSocketPDoornbosch, removeHeaders);
 
             long lEnd = System.currentTimeMillis();
             long lDurationMs = lEnd - lStart;
@@ -298,7 +281,6 @@ public class HarForJMeter {
      * @param urlFilterToExclude the regex filter to exclude url
      * @param pageStartNumber the first page number
      * @param samplerStartNumber the first http sampler number
-     * @param lrwr_info what information from the HAR do we use ? The transaction_name or empty. For HAR generated with LoadRunner Web Recorder.
      * @param fileExternalInfo file contains external informations like 2024-05-07T07:56:40.513Z;TRANSACTION;home_page;start
      * @param isAddViewTreeForRecord do we add View Result Tree to view Record.xml file ?
      * @param isWebSocketPDoornbosch do we find websocket messages and managed websocket with Peter Doornbosch JMeter plugin ?
@@ -310,7 +292,7 @@ public class HarForJMeter {
      * @throws TransformerException Megatron we have a problem
      */
     public static void generateJmxAndRecord(String harFile, String jmxOut, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude,
-                                            String recordXmlOut, int pageStartNumber, int samplerStartNumber, String lrwr_info, String fileExternalInfo, boolean isAddViewTreeForRecord, boolean isWebSocketPDoornbosch, String removeHeaders) throws HarReaderException, MalformedURLException, ParserConfigurationException, URISyntaxException, TransformerException {
+                                            String recordXmlOut, int pageStartNumber, int samplerStartNumber, String fileExternalInfo, boolean isAddViewTreeForRecord, boolean isWebSocketPDoornbosch, String removeHeaders) throws HarReaderException, MalformedURLException, ParserConfigurationException, URISyntaxException, TransformerException {
         HarForJMeter harForJMeter = new HarForJMeter();
 
         LOGGER.info("Version=" + APPLICATION_VERSION);
@@ -324,13 +306,6 @@ public class HarForJMeter {
         LOGGER.info(harCreator);
 
         List<TransactionInfo> listTransactionInfo = null;
-        if (K_LRWR_USE_TRANSACTION_NAME.equals(lrwr_info)) {
-            boolean isHarWithLrwr = ManageLrwr.isHarContainsLrwr(harFile);
-            if (isHarWithLrwr) {
-                List<HarLrTransactions> listHarLrTransactions = ManageLrwr.getListTransactionLrwr(harFile);
-                listTransactionInfo = ManageLrwr.createListTransactionInfo(listHarLrTransactions);
-            }
-        }
 
         if (!fileExternalInfo.isEmpty()) {
             try {
@@ -380,7 +355,7 @@ public class HarForJMeter {
      * @param urlFilterToExclude the regex filter to exclude url
      * @param pageStartNumber the first page number
      * @param samplerStartNumber the first http sampler number
-     * @param listTransactionInfo list with TransactionInfo for HAR generated from LoadRunner Web Recorder
+     * @param listTransactionInfo list with TransactionInfo for HAR generated from csv file
      * @param isAddViewTreeForRecord do we add View Result Tree to view Record.xml file ?
      * @param webSocketRequest a list of websocket messages
      * @param recordXmlOut the record.xml file to open with a Listener View Result Tree
@@ -556,12 +531,6 @@ public class HarForJMeter {
                 .build();
         options.addOption(samplerStartNumberOpt);
 
-        Option lrwrUseInfosOpt = Option.builder(K_LRWR_USE_INFOS).argName(K_LRWR_USE_INFOS).hasArg(true)
-                .required(false)
-                .desc("Optional, the har file has been generated with LoadRunner Web Recorder and contains Transaction Name, expected value : 'transaction_name' or don't add this parameter")
-                .build();
-        options.addOption(lrwrUseInfosOpt);
-
 
         Option externalFileInfosOpt = Option.builder(K_EXTERNAL_FILE_INFOS).argName(K_EXTERNAL_FILE_INFOS).hasArg(true)
                 .required(false)
@@ -658,10 +627,6 @@ public class HarForJMeter {
 
         if (line.hasOption(K_SAMPLER_START_NUMBER)) {
             properties.setProperty(K_SAMPLER_START_NUMBER, line.getOptionValue(K_SAMPLER_START_NUMBER));
-        }
-
-        if (line.hasOption(K_LRWR_USE_INFOS)) {
-            properties.setProperty(K_LRWR_USE_INFOS, line.getOptionValue(K_LRWR_USE_INFOS));
         }
 
         if (line.hasOption(K_EXTERNAL_FILE_INFOS)) {

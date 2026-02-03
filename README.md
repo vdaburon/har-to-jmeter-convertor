@@ -79,18 +79,6 @@ The BrowserUp Proxy **active** project is available at this url : <br/>
 
 Note : The BrowserMod Proxy tool is no more active (since september 2017) and it's recommended to migrate to BrowerUp proxy https://github.com/valfirst/browserup-proxy the "valfirst" GitHub username/project is important.
 
-### HAR created in Chrome Browser with the OpenText Professional Performance Engineering (LoadRunner) Web Recorder Chrome Extension
-This tool is compatible with Har file generated with the LoadRunner Web Recorder Chrome Extension.
-
-The main advantage is to declare **Transaction Names when recording** and navigate to the web site. This transactions will be Page Names (Transaction Controllers names) in the JMeter script.
-
-![Step to create script and record from HAR file from LoadRunner Web Recorder](doc/images/lrwr_chrome_extension_har_convertor_script_record.png)
-
-The OpenText Professional Performance Engineering (LoadRunner) Web Recorder Chrome Extension is available at this url : <br/>
-[Download the Recorder extension for Chrome : "HarGeneratorChrome"](https://marketplace.opentext.com/appdelivery/content/recorder-extension-for-chrome)
-
-You need to add the parameter and value : <code>-use_lrwr_infos transaction_name</code> to indicate that is a HAR file generated with LoadRunner Web Recorder (lrwr).
-
 ## Websocket use the plugin "WebSocket Samplers by Peter Doornbosch"
 If your Har file contains WebSocket Connection and Messages, set the parameter <code>-ws_with_pdoornbosch true</code>, this tool will try to create Websocket Samplers in the JMeter script generated and the exchanges in the Recording XML file.
 
@@ -131,7 +119,6 @@ Parameters are :
 * remove_headers, remove a list of http headers (comma separator and case insensitive), e.g:"User-Agent,Pragma,X-TOKEN"
 * page_start_number, set the start page number for partial recording (default 1, must be an integer > 0)
 * sampler_start_number, set the start sampler number for partial recording (default 1, must be an integer > 0)
-* use_lrwr_infos, the har file has been generated with LoadRunner Web Recorder Chrome extension and contains Transaction Name, expected values : 'transaction_name' or don't add this parameter
 * external_file_infos, external csv file contains information about Timestamp, Transaction Name, date start or end.
 * ws_with_pdoornbosch boolean, manage websocket messages with the JMeter plugin from Peter DOORNBOSH (default false), if true need the plugin 'WebSocket Samplers by Peter Doornbosch' to open the generated script.
 * jackson_parser_string_max, change default Jackson String length size (default integer size = 20000000), for processing very large JSON
@@ -142,7 +129,7 @@ This tool could be use with script shell Windows or Linux.
 Help to see all parameters :
 
 <pre>
-C:\apache-jmeter\bin&gt;java -jar har-to-jmeter-convertor-9.0-jar-with-dependencies.jar -help
+C:\apache-jmeter\bin&gt;java -jar har-to-jmeter-convertor-9.1-jar-with-dependencies.jar -help
 
 usage: io.github.vdaburon.jmeter.har.HarForJMeter [-add_pause &lt;add_pause&gt;] [-add_result_tree_record
        &lt;add_result_tree_record&gt;] [-external_file_infos &lt;external_file_infos&gt;] [-filter_exclude &lt;filter_exclude&gt;]
@@ -150,7 +137,7 @@ usage: io.github.vdaburon.jmeter.har.HarForJMeter [-add_pause &lt;add_pause&gt;]
        &lt;jackson_parser_string_max&gt;] -jmx_out &lt;jmx_out&gt; [-new_tc_pause &lt;new_tc_pause&gt;] [-page_start_number
        &lt;page_start_number&gt;] [-record_out &lt;record_out&gt;] [-remove_cache_request &lt;remove_cache_request&gt;] [-remove_cookie
        &lt;remove_cookie&gt;] [-remove_headers &lt;remove_headers&gt;] [-sampler_start_number &lt;sampler_start_number&gt;]
-       [-use_lrwr_infos &lt;use_lrwr_infos&gt;] [-ws_with_pdoornbosch &lt;ws_with_pdoornbosch&gt;]
+       [-ws_with_pdoornbosch &lt;ws_with_pdoornbosch&gt;]
 io.github.vdaburon.jmeter.har.HarForJMeter
  -add_pause &lt;add_pause&gt;                                   Optional boolean, add Flow Control Action Pause after
                                                           Transaction Controller (default true)
@@ -182,9 +169,6 @@ io.github.vdaburon.jmeter.har.HarForJMeter
                                                           e.g:User-Agent,Pragma,X-TOKEN
  -sampler_start_number &lt;sampler_start_number&gt;             Optional, the start sampler number for partial recording
                                                           (default 1)
- -use_lrwr_infos &lt;use_lrwr_infos&gt;                         Optional, the har file has been generated with LoadRunner Web
-                                                          Recorder and contains Transaction Name, expected value :
-                                                          'transaction_name' or don't add this parameter
  -ws_with_pdoornbosch &lt;ws_with_pdoornbosch&gt;               Optional boolean, Manage websocket messages with the JMeter
                                                           plugin from Peter DOORNBOSH (default false), if true need the
                                                           plugin from Peter DOORNBOSH to open the generated script
@@ -192,16 +176,15 @@ E.g : java -jar har-for-jmeter-&lt;version&gt;-jar-with-dependencies.jar -har_in
 recording.xml -add_result_tree_record true -new_tc_pause 5000 -add_pause true -filter_include "https://mysite/.*"
 -filter_exclude "https://notmysite/*" -page_start_number 50 -sampler_start_number 250 -ws_with_pdoornbosch false
 -remove_headers "User-Agent,Pragma"
-
 </pre>
 
 
 <pre>
-C:\apache-jmeter\bin>java -jar har-to-jmeter-convertor-9.0-jar-with-dependencies.jar -har_in "myhar.har" -jmx_out "script_out.jmx" -filter_include "https://mysite.com/.*" -filter_exclude "https://notmysite.com/.*" -add_pause true -new_tc_pause 5000
+C:\apache-jmeter\bin>java -jar har-to-jmeter-convertor-9.1-jar-with-dependencies.jar -har_in "myhar.har" -jmx_out "script_out.jmx" -filter_include "https://mysite.com/.*" -filter_exclude "https://notmysite.com/.*" -add_pause true -new_tc_pause 5000
 </pre>
 
 <pre>
-/var/opt/apache-jmeter/bin>java -jar har-to-jmeter-convertor-9.0-jar-with-dependencies.jar -har_in "myhar.har" -jmx_out "script_out.jmx" -record_out "record.xml" -add_pause true -new_tc_pause 5000
+/var/opt/apache-jmeter/bin>java -jar har-to-jmeter-convertor-9.1-jar-with-dependencies.jar -har_in "myhar.har" -jmx_out "script_out.jmx" -record_out "record.xml" -add_pause true -new_tc_pause 5000
 </pre>
 
 ## Usage Maven
@@ -210,16 +193,18 @@ The maven groupId, artifactId and version, this plugin is in the **Maven Central
 ```xml
 <groupId>io.github.vdaburon</groupId>
 <artifactId>har-to-jmeter-convertor</artifactId>
-<version>9.0</version>
+<version>9.1</version>
 ```
 
 ## License
 Licensed under the Apache License, Version 2.0
 
 ## Versions
+Version 9.1 date 2026-02-03, Remove parameter use_lrwr_infos because the LoadRunner plugin HarGeneratorChrome for Chrome doesn't work with new Chrome security for plugins.
+
 Version 9.0 date 2026-02-03, Add new parameter <code>-jackson_parser_string_max</code>Add parameter to change default Jackson String length size (default integer size = 20000000) <code>-jackson_parser_string_max 50000000</code>, Pull Request https://github.com/vdaburon/har-to-jmeter-convertor/pull/3
 
-Version 8.0 date 2025-11-22, Add new parameter <code>-remove_headers</code> remove a list of http headers (comma separator, case insensitive), e.g: <code>-remove_headers "User-Agent,Pragma,X-TOKEN"</code>
+Version 8.0 date 2025-11-22, Add new parameter <code>-remove_headers</code> remove a list of http headers (comma separator, case insensitive), e.g: <code>-remove_headers "User-Agent,Pragma,X-TOKEN"</code>.
 
 Version 7.1 date 2025-03-27, Remove request headers from HTTP/2, these headers start with ':' likes ":authority", ":method", ":path" or ":scheme". Don't create httpSampler for url "data:".
 

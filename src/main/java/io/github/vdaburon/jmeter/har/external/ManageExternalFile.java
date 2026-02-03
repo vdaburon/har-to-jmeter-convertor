@@ -140,4 +140,33 @@ public class ManageExternalFile {
         LOGGER.info("External infos : " + listTransactionInfo);
         return listTransactionInfo;
     }
+
+    /**
+     * Get the last TransactionInfo from the listTransactionInfo when the parameter startedDateTime is between begin date and end date
+     * @param startedDateTime the date to search the corresponding TransactionInfo
+     * @param listTransactionInfo the listTransactionInfo contains all TransactionInfo
+     * @return if a TransactionInfo which includes start and end dates from startedDateTime exists return this TransactionInfo else return null
+     */
+    public static TransactionInfo getTransactionInfoAroundDateTime(String startedDateTime, List<TransactionInfo> listTransactionInfo) {
+        boolean isFind = false;
+        int nbElts = listTransactionInfo.size();
+        int i = 0;
+        TransactionInfo transactionInfoFind = null;
+
+        while (i < nbElts) {
+            TransactionInfo transactionInfo = listTransactionInfo.get(i);
+            if (transactionInfo.getBeginDateTime().compareTo(startedDateTime) <= 0 && transactionInfo.getEndDateTime().compareTo(startedDateTime) >= 0) {
+                isFind = true;
+                transactionInfoFind = transactionInfo;
+            }
+            i++;
+        }
+
+        if (isFind) {
+            LOGGER.fine("transactionInfoFind=" + transactionInfoFind + " for startedDateTime=" + startedDateTime);
+        } else {
+            LOGGER.fine("NOT FIND for startedDateTime=" + startedDateTime);
+        }
+        return transactionInfoFind;
+    }
 }

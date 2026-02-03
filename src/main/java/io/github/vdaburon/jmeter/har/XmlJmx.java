@@ -28,7 +28,7 @@ import de.sstoehr.harreader.model.HarRequest;
 import de.sstoehr.harreader.model.HttpMethod;
 
 import io.github.vdaburon.jmeter.har.common.TransactionInfo;
-import io.github.vdaburon.jmeter.har.lrwr.ManageLrwr;
+import io.github.vdaburon.jmeter.har.external.ManageExternalFile;
 import io.github.vdaburon.jmeter.har.websocket.WebSocketPDoornboschXmlJmx;
 import io.github.vdaburon.jmeter.har.websocket.WebSocketRequest;
 
@@ -192,10 +192,10 @@ public class XmlJmx {
 
             TransactionInfo transactionInfo = null;
             if (listTransactionInfo != null) {
-                // Do we have a page  from lrwr Transaction or external cv file transaction info ?
+                // Do we have a page  from external cv file transaction info ?
                 Date datePageStartedDateTime = pageInter.getStartedDateTime();
                 String pageStartedDateTime = Utils.dateToIsoFormat(datePageStartedDateTime);
-                transactionInfo = ManageLrwr.getTransactionInfoAroundDateTime(pageStartedDateTime,listTransactionInfo);
+                transactionInfo = ManageExternalFile.getTransactionInfoAroundDateTime(pageStartedDateTime,listTransactionInfo);
                 if (transactionInfo != null) {
                     pageTitle = transactionInfo.getName();
                     LOGGER.info("Set the page title with the transaction name: " + pageTitle);
@@ -292,10 +292,10 @@ public class XmlJmx {
                         }
                         boolean isCreateNewTcFromTransactionInfo = false;
                         if (listTransactionInfo != null) {
-                            // Do we have a page or sub page from lrwr Transaction or external cv file transaction info ?
+                            // Do we have a page or sub page from external cv file transaction info ?
                             Date dateEntryStartedDateTime = harEntryInter.getStartedDateTime();
                             String entryStartedDateTime = Utils.dateToIsoFormat(dateEntryStartedDateTime);
-                            TransactionInfo transactionInfo2 = ManageLrwr.getTransactionInfoAroundDateTime(entryStartedDateTime,listTransactionInfo);
+                            TransactionInfo transactionInfo2 = ManageExternalFile.getTransactionInfoAroundDateTime(entryStartedDateTime,listTransactionInfo);
                             if (transactionInfo2 != null) {
                                 isCreateNewTcFromTransactionInfo = true;
 

@@ -64,7 +64,7 @@ import java.util.regex.PatternSyntaxException;
 
 public class HarForJMeter {
 
-    public static final String APPLICATION_VERSION = "8.0";
+    public static final String APPLICATION_VERSION = "9.0";
 
     // CLI OPTIONS
     public static final String K_HAR_IN_OPT = "har_in";
@@ -86,6 +86,7 @@ public class HarForJMeter {
     public static final String K_REMOVE_HEADERS_OPT = "remove_headers";
 	public static final String K_JACKSON_PARSER_STRING_MAX = "jackson_parser_string_max";
 
+    public static final int K_JACKSON_PARSER_STRING_MAX_DEFAULT = 20_000_000;
 
     private static final Logger LOGGER = Logger.getLogger(HarForJMeter.class.getName());
 
@@ -106,7 +107,7 @@ public class HarForJMeter {
         String lrwr_info = ""; // for LoadRunner Web Recorder Chrome Extension
         String fileExternalInfo = ""; // csv file name contains infos like : 2024-05-07T07:56:40.513Z;TRANSACTION;welcome_page;start
         String removeHeaders = ""; // a list of http headers to remove with comma separtor, e.g:"User-Agent,Pragma"
-		int jacksonParserStringMax = 20_000_000;
+		int jacksonParserStringMax = K_JACKSON_PARSER_STRING_MAX_DEFAULT;
 
         long lStart = System.currentTimeMillis();
         LOGGER.info("Start main");
@@ -128,9 +129,9 @@ public class HarForJMeter {
 			try{
 				jacksonParserStringMax = Integer.parseInt(sTmp);
 			} catch (NumberFormatException e) {
-				LOGGER.warning("Error parsing long type parameter " + K_JACKSON_PARSER_STRING_MAX + 
-							   ", value = " + sTmp + ", set to default " + jacksonParserStringMax);
-				jacksonParserStringMax = 20_000_000;
+				LOGGER.warning("Error parsing int type parameter " + K_JACKSON_PARSER_STRING_MAX +
+							   ", value = " + sTmp + ", set to default " + K_JACKSON_PARSER_STRING_MAX_DEFAULT);
+				jacksonParserStringMax = K_JACKSON_PARSER_STRING_MAX_DEFAULT;
 			}
 			updateStreamReadConstraint(jacksonParserStringMax);
 		}
@@ -243,6 +244,7 @@ public class HarForJMeter {
         }
 
         LOGGER.info("************* PARAMETERS ***************");
+        LOGGER.info("APPLICATION_VERSION=" + APPLICATION_VERSION);
         LOGGER.info(K_HAR_IN_OPT + ", harFile=" + harFile);
         LOGGER.info(K_JMETER_FILE_OUT_OPT + ", jmxOut=" + jmxOut);
         LOGGER.info(K_RECORD_FILE_OUT_OPT + ", recordXmlOut=" + recordXmlOut);
@@ -284,18 +286,6 @@ public class HarForJMeter {
     }
 
 	/**
-	 * Updates Jackson Readers string limit from it's default of 20000000 to a new value
-	 * @param newLimit the long value to change the limit to
-	 */
-	private static void updateStreamReadConstraint(int newLimit){
-		StreamReadConstraints.overrideDefaultStreamReadConstraints(
-			StreamReadConstraints.builder()
-				.maxStringLength(newLimit) // Set a new limit
-				.build()
-		);
-	}
-
-    /**
      * Create the JMeter script jmx file and the Record.xml file
      * @param harFile the har file to read
      * @param jmxOut the JMeter script to create
@@ -431,7 +421,7 @@ public class HarForJMeter {
     }
 
     /**
-     * Special treatment for multi-part (usually upload file)
+     * Special treatment for multipart (usually upload file)
      * @param harRequest the harRequest with multipart/form-data;
      * @return HarPostData modified with file information and others parameters
      */
@@ -480,6 +470,18 @@ public class HarForJMeter {
         }
         harPostDataModified.setParams(listParams);
         return harPostDataModified;
+    }
+
+    /**
+     * Updates Jackson Readers string limit from it's default of 20_000_000 to a new value
+     * @param newLimit the int value to change the limit to
+     */
+    private static void updateStreamReadConstraint(int newLimit){
+        StreamReadConstraints.overrideDefaultStreamReadConstraints(
+                StreamReadConstraints.builder()
+                        .maxStringLength(newLimit) // Set a new limit
+                        .build()
+        );
     }
 
     /**
@@ -587,7 +589,7 @@ public class HarForJMeter {
 
 		Option jacksonParserStringMax = Option.builder(K_JACKSON_PARSER_STRING_MAX).argName(K_JACKSON_PARSER_STRING_MAX).hasArg(true)
 			.required(false)
-			.desc("Optional argument to increase (or decrease) the maxium allowed document string for the Jackson Parser library, default is 20000000")
+			.desc("Optional argument to increase (or decrease) the maximum allowed document string for the Jackson Parser library (int value), default is " + K_JACKSON_PARSER_STRING_MAX_DEFAULT)
 			.build();
 		options.addOption(jacksonParserStringMax);
         return options;

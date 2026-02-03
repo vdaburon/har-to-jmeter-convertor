@@ -29,7 +29,9 @@ import io.github.vdaburon.jmeter.har.lrwr.HarLrTransactions;
 import io.github.vdaburon.jmeter.har.lrwr.ManageLrwr;
 import io.github.vdaburon.jmeter.har.common.TransactionInfo;
 import io.github.vdaburon.jmeter.har.websocket.ManageWebSocket;
-import io.github.vdaburon.jmeter.har.websocket.WebSocketRequest;
+import io.github.vdaburon.jmeter.har.websocket.WebSocketRequest; 
+
+import com.fasterxml.jackson.core.StreamReadConstraints;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -82,6 +84,7 @@ public class HarForJMeter {
     public static final String K_ADD_VIEW_RESULT_TREE_WITH_RECORD_FILE = "add_result_tree_record";
     public static final String K_ADD_WEBSOCKET_WITH_PLUGIN_PETER_DOORNBOSH = "ws_with_pdoornbosch";
     public static final String K_REMOVE_HEADERS_OPT = "remove_headers";
+	public static final String K_JACKSON_PARSER_STRING_MAX = "jackson_parser_string_max";
 
 
     private static final Logger LOGGER = Logger.getLogger(HarForJMeter.class.getName());
@@ -103,7 +106,7 @@ public class HarForJMeter {
         String lrwr_info = ""; // for LoadRunner Web Recorder Chrome Extension
         String fileExternalInfo = ""; // csv file name contains infos like : 2024-05-07T07:56:40.513Z;TRANSACTION;welcome_page;start
         String removeHeaders = ""; // a list of http headers to remove with comma separtor, e.g:"User-Agent,Pragma"
-
+		int jacksonParserStringMax = 20_000_000;
 
         long lStart = System.currentTimeMillis();
         LOGGER.info("Start main");
@@ -120,6 +123,18 @@ public class HarForJMeter {
         }
 
         String sTmp = "";
+		sTmp = (String) parseProperties.get(K_JACKSON_PARSER_STRING_MAX);
+		if (sTmp != null) {
+			try{
+				jacksonParserStringMax = Integer.parseInt(sTmp);
+			} catch (NumberFormatException e) {
+				LOGGER.warning("Error parsing long type parameter " + K_JACKSON_PARSER_STRING_MAX + 
+							   ", value = " + sTmp + ", set to default " + jacksonParserStringMax);
+				jacksonParserStringMax = 20_000_000;
+			}
+			updateStreamReadConstraint(jacksonParserStringMax);
+		}
+
         sTmp = (String) parseProperties.get(K_HAR_IN_OPT);
         if (sTmp != null) {
             harFile = sTmp;
@@ -244,6 +259,7 @@ public class HarForJMeter {
         LOGGER.info(K_EXTERNAL_FILE_INFOS + ", fileExternalInfo=" + fileExternalInfo);
         LOGGER.info(K_ADD_VIEW_RESULT_TREE_WITH_RECORD_FILE + ", isAddViewTreeForRecord=" + isAddViewTreeForRecord);
         LOGGER.info(K_ADD_WEBSOCKET_WITH_PLUGIN_PETER_DOORNBOSH + ", isWebSocketPDoornbosch=" + isWebSocketPDoornbosch);
+		LOGGER.info(K_JACKSON_PARSER_STRING_MAX + ", jacksonParserStringMax=" + jacksonParserStringMax);
         LOGGER.info("***************************************");
         try {
             generateJmxAndRecord(harFile,  jmxOut,createNewTransactionAfterRequestMs,isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude,
@@ -266,6 +282,18 @@ public class HarForJMeter {
             System.exit(1);
         }
     }
+
+	/**
+	 * Updates Jackson Readers string limit from it's default of 20000000 to a new value
+	 * @param newLimit the long value to change the limit to
+	 */
+	private static void updateStreamReadConstraint(int newLimit){
+		StreamReadConstraints.overrideDefaultStreamReadConstraints(
+			StreamReadConstraints.builder()
+				.maxStringLength(newLimit) // Set a new limit
+				.build()
+		);
+	}
 
     /**
      * Create the JMeter script jmx file and the Record.xml file
@@ -556,6 +584,12 @@ public class HarForJMeter {
                 .desc("Remove a list of headers (comma separator, case insensitive), e.g:User-Agent,Pragma,X-TOKEN")
                 .build();
         options.addOption(removeHeardersOpt);
+
+		Option jacksonParserStringMax = Option.builder(K_JACKSON_PARSER_STRING_MAX).argName(K_JACKSON_PARSER_STRING_MAX).hasArg(true)
+			.required(false)
+			.desc("Optional argument to increase (or decrease) the maxium allowed document string for the Jackson Parser library, default is 20000000")
+			.build();
+		options.addOption(jacksonParserStringMax);
         return options;
     }
 
@@ -643,6 +677,11 @@ public class HarForJMeter {
         if (line.hasOption(K_REMOVE_HEADERS_OPT)) {
             properties.setProperty(K_REMOVE_HEADERS_OPT, line.getOptionValue(K_REMOVE_HEADERS_OPT));
         }
+
+		if (line.hasOption(K_JACKSON_PARSER_STRING_MAX)){
+			properties.setProperty(K_JACKSON_PARSER_STRING_MAX, line.getOptionValue(K_JACKSON_PARSER_STRING_MAX));
+		}
+
 
         return properties;
     }

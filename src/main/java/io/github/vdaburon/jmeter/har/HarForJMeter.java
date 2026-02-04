@@ -18,6 +18,7 @@ package io.github.vdaburon.jmeter.har;
 
 import de.sstoehr.harreader.HarReader;
 import de.sstoehr.harreader.HarReaderException;
+import de.sstoehr.harreader.jackson.MapperFactory;
 import de.sstoehr.harreader.model.Har;
 import de.sstoehr.harreader.model.HarCreatorBrowser;
 import de.sstoehr.harreader.model.HarPostData;
@@ -27,9 +28,7 @@ import de.sstoehr.harreader.model.HarRequest;
 import io.github.vdaburon.jmeter.har.external.ManageExternalFile;
 import io.github.vdaburon.jmeter.har.common.TransactionInfo;
 import io.github.vdaburon.jmeter.har.websocket.ManageWebSocket;
-import io.github.vdaburon.jmeter.har.websocket.WebSocketRequest; 
-
-import com.fasterxml.jackson.core.StreamReadConstraints;
+import io.github.vdaburon.jmeter.har.websocket.WebSocketRequest;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -128,7 +127,6 @@ public class HarForJMeter {
 							   ", value = " + sTmp + ", set to default " + K_JACKSON_PARSER_STRING_MAX_DEFAULT);
 				jacksonParserStringMax = K_JACKSON_PARSER_STRING_MAX_DEFAULT;
 			}
-			updateStreamReadConstraint(jacksonParserStringMax);
 		}
 
         sTmp = (String) parseProperties.get(K_HAR_IN_OPT);
@@ -247,7 +245,7 @@ public class HarForJMeter {
 		LOGGER.info(K_JACKSON_PARSER_STRING_MAX + ", jacksonParserStringMax=" + jacksonParserStringMax);
         LOGGER.info("***************************************");
         try {
-            generateJmxAndRecord(harFile,  jmxOut,createNewTransactionAfterRequestMs,isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude,
+            generateJmxAndRecord(harFile, jacksonParserStringMax, jmxOut,createNewTransactionAfterRequestMs,isAddPause, isRemoveCookie, isRemoveCacheRequest, urlFilterToInclude, urlFilterToExclude,
                                     recordXmlOut, pageStartNumber, samplerStartNumber, fileExternalInfo, isAddViewTreeForRecord, isWebSocketPDoornbosch, removeHeaders);
 
             long lEnd = System.currentTimeMillis();
@@ -271,6 +269,7 @@ public class HarForJMeter {
 	/**
      * Create the JMeter script jmx file and the Record.xml file
      * @param harFile the har file to read
+     * @param jacksonParserStringMax the max Jackson String Length size for JSON
      * @param jmxOut the JMeter script to create
      * @param recordXmlOut the record.xml file to open with a Listener View Result Tree
      * @param createNewTransactionAfterRequestMs how many milliseconds for creating a new Transaction Controller
@@ -291,13 +290,14 @@ public class HarForJMeter {
      * @throws URISyntaxException trouble to convert String to a URL
      * @throws TransformerException Megatron we have a problem
      */
-    public static void generateJmxAndRecord(String harFile, String jmxOut, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude,
+    public static void generateJmxAndRecord(String harFile, int jacksonParserStringMax, String jmxOut, long createNewTransactionAfterRequestMs, boolean isAddPause, boolean isRemoveCookie, boolean isRemoveCacheRequest, String urlFilterToInclude, String urlFilterToExclude,
                                             String recordXmlOut, int pageStartNumber, int samplerStartNumber, String fileExternalInfo, boolean isAddViewTreeForRecord, boolean isWebSocketPDoornbosch, String removeHeaders) throws HarReaderException, MalformedURLException, ParserConfigurationException, URISyntaxException, TransformerException {
         HarForJMeter harForJMeter = new HarForJMeter();
 
         LOGGER.info("Version=" + APPLICATION_VERSION);
 
-        Har har = harForJMeter.loadHarFile(harFile);
+        Har har = harForJMeter.loadHarFile(harFile, jacksonParserStringMax);
+
         HarCreatorBrowser creator = har.getLog().getCreator();
         String harCreator = "HAR File, Creator : Not Declared";
         if (creator != null) {
@@ -335,11 +335,16 @@ public class HarForJMeter {
     /**
      * Load the har file and return the HAR object
      * @param fileHar the har to read
+     * @param jacksonParserStringMax set the max Jackson String Length size for JSON
      * @return the HAR object
      * @throws HarReaderException trouble when reading HAR file
      */
-    protected Har loadHarFile(String fileHar) throws HarReaderException {
-        Har har = new HarReader().readFromFile(new File(fileHar));
+    protected Har loadHarFile(String fileHar, int jacksonParserStringMax) throws HarReaderException {
+        MapperFactory myMapperFactory = new MyMapperFactory();
+        ((MyMapperFactory) myMapperFactory).setMaxStringLength(jacksonParserStringMax);
+        HarReader harReader = new HarReader(myMapperFactory);
+        Har har = harReader.readFromFile(new File(fileHar));
+        // Har har = new HarReader().readFromFile(new File(fileHar));
         return har;
     }
 
@@ -448,18 +453,6 @@ public class HarForJMeter {
     }
 
     /**
-     * Updates Jackson Readers string limit from it's default of 20_000_000 to a new value
-     * @param newLimit the int value to change the limit to
-     */
-    private static void updateStreamReadConstraint(int newLimit){
-        StreamReadConstraints.overrideDefaultStreamReadConstraints(
-                StreamReadConstraints.builder()
-                        .maxStringLength(newLimit) // Set a new limit
-                        .build()
-        );
-    }
-
-    /**
      * Create the Command Line Parameters Options
      * @return Option CLI
      */
@@ -469,97 +462,113 @@ public class HarForJMeter {
         Option helpOpt = Option.builder("help").hasArg(false).desc("Help and show parameters").build();
         options.addOption(helpOpt);
 
-        Option harFileInOpt = Option.builder(K_HAR_IN_OPT).argName(K_HAR_IN_OPT).hasArg(true)
+        Option harFileInOpt = Option.builder(K_HAR_IN_OPT).argName(K_HAR_IN_OPT)
+                .hasArg(true)
                 .required(true).desc("Har file to read (e.g : my_file.har)").build();
         options.addOption(harFileInOpt);
 
-        Option jmeterFileOutOpt = Option.builder(K_JMETER_FILE_OUT_OPT).argName(K_JMETER_FILE_OUT_OPT).hasArg(true)
+        Option jmeterFileOutOpt = Option.builder(K_JMETER_FILE_OUT_OPT).argName(K_JMETER_FILE_OUT_OPT)
+                .hasArg(true)
                 .required(true).desc("JMeter file created to write (e.g : script.jmx)").build();
         options.addOption(jmeterFileOutOpt);
 
-        Option createNewTcOpt = Option.builder(K_CREATE_NEW_TC_AFTER_MS_OPT).argName(K_CREATE_NEW_TC_AFTER_MS_OPT).hasArg(true)
+        Option createNewTcOpt = Option.builder(K_CREATE_NEW_TC_AFTER_MS_OPT).argName(K_CREATE_NEW_TC_AFTER_MS_OPT)
+                .hasArg(true)
                 .required(false)
                 .desc("Optional, create new Transaction Controller after request ms, same as jmeter property : proxy.pause, need to be > 0 if set. Usefully for Har created by Firefox or Single Page Application (Angular, ReactJS, VuesJS ...)")
                 .build();
         options.addOption(createNewTcOpt);
 
-        Option addPauseOpt = Option.builder(K_ADD_PAUSE_OPT).argName(K_ADD_PAUSE_OPT).hasArg(true)
+        Option addPauseOpt = Option.builder(K_ADD_PAUSE_OPT).argName(K_ADD_PAUSE_OPT)
+                .hasArg(true)
                 .required(false)
                 .desc("Optional boolean, add Flow Control Action Pause after Transaction Controller (default true)")
                 .build();
         options.addOption(addPauseOpt);
 
-        Option removeCookieHeaderOpt = Option.builder(K_REMOVE_COOKIE_OPT).argName(K_REMOVE_COOKIE_OPT).hasArg(true)
+        Option removeCookieHeaderOpt = Option.builder(K_REMOVE_COOKIE_OPT).argName(K_REMOVE_COOKIE_OPT)
+                .hasArg(true)
                 .required(false)
                 .desc("Optional boolean, remove cookie in http header (default true because add a Cookie Manager)")
                 .build();
         options.addOption(removeCookieHeaderOpt);
 
-        Option removeCacherHeaderRequestOpt = Option.builder(K_REMOVE_CACHE_REQUEST_OPT).argName(K_REMOVE_CACHE_REQUEST_OPT).hasArg(true)
+        Option removeCacherHeaderRequestOpt = Option.builder(K_REMOVE_CACHE_REQUEST_OPT).argName(K_REMOVE_CACHE_REQUEST_OPT)
+                .hasArg(true)
                 .required(false)
                 .desc("Optional boolean, remove cache header in the http request (default true because add a Cache Manager)")
                 .build();
         options.addOption(removeCacherHeaderRequestOpt);
 
-        Option filterRegIncludeOpt = Option.builder(K_REGEX_FILTER_INCLUDE_OPT).argName(K_REGEX_FILTER_INCLUDE_OPT).hasArg(true)
+        Option filterRegIncludeOpt = Option.builder(K_REGEX_FILTER_INCLUDE_OPT).argName(K_REGEX_FILTER_INCLUDE_OPT)
+                .hasArg(true)
                 .required(false)
                 .desc("Optional, regular expression to include url")
                 .build();
         options.addOption(filterRegIncludeOpt);
 
-        Option filterRegExcludeOpt = Option.builder(K_REGEX_FILTER_EXCLUDE_OPT).argName(K_REGEX_FILTER_EXCLUDE_OPT).hasArg(true)
+        Option filterRegExcludeOpt = Option.builder(K_REGEX_FILTER_EXCLUDE_OPT).argName(K_REGEX_FILTER_EXCLUDE_OPT)
+                .hasArg(true)
                 .required(false)
                 .desc("Optional, regular expression to exclude url")
                 .build();
         options.addOption(filterRegExcludeOpt);
 
-        Option recordFileOutOpt = Option.builder(K_RECORD_FILE_OUT_OPT).argName(K_RECORD_FILE_OUT_OPT).hasArg(true)
+        Option recordFileOutOpt = Option.builder(K_RECORD_FILE_OUT_OPT).argName(K_RECORD_FILE_OUT_OPT)
+                .hasArg(true)
                 .required(false)
                 .desc("Optional, file xml contains exchanges likes recorded by JMeter")
                 .build();
         options.addOption(recordFileOutOpt);
 
-        Option pageStartNumberOpt = Option.builder(K_PAGE_START_NUMBER).argName(K_PAGE_START_NUMBER).hasArg(true)
+        Option pageStartNumberOpt = Option.builder(K_PAGE_START_NUMBER).argName(K_PAGE_START_NUMBER)
+                .hasArg(true)
                 .required(false)
                 .desc("Optional, the start page number for partial recording (default 1)")
                 .build();
         options.addOption(pageStartNumberOpt);
 
-        Option samplerStartNumberOpt = Option.builder(K_SAMPLER_START_NUMBER).argName(K_SAMPLER_START_NUMBER).hasArg(true)
+        Option samplerStartNumberOpt = Option.builder(K_SAMPLER_START_NUMBER).argName(K_SAMPLER_START_NUMBER)
+                .hasArg(true)
                 .required(false)
                 .desc("Optional, the start sampler number for partial recording (default 1)")
                 .build();
         options.addOption(samplerStartNumberOpt);
 
 
-        Option externalFileInfosOpt = Option.builder(K_EXTERNAL_FILE_INFOS).argName(K_EXTERNAL_FILE_INFOS).hasArg(true)
+        Option externalFileInfosOpt = Option.builder(K_EXTERNAL_FILE_INFOS).argName(K_EXTERNAL_FILE_INFOS)
+                .hasArg(true)
                 .required(false)
                 .desc("Optional, csv file contains external infos : timestamp transaction name and start or end")
                 .build();
         options.addOption(externalFileInfosOpt);
 
-        Option addViewResultTreeForRecordOpt = Option.builder(K_ADD_VIEW_RESULT_TREE_WITH_RECORD_FILE).argName(K_ADD_VIEW_RESULT_TREE_WITH_RECORD_FILE).hasArg(true)
+        Option addViewResultTreeForRecordOpt = Option.builder(K_ADD_VIEW_RESULT_TREE_WITH_RECORD_FILE).argName(K_ADD_VIEW_RESULT_TREE_WITH_RECORD_FILE)
+                .hasArg(true)
                 .required(false)
                 .desc("Optional boolean, add 'View Result Tree' to view the record.xml file created (default true), record_out must be not empty")
                 .build();
         options.addOption(addViewResultTreeForRecordOpt);
 
-        Option addWsPluginPeterDoornboshOpt = Option.builder(K_ADD_WEBSOCKET_WITH_PLUGIN_PETER_DOORNBOSH).argName(K_ADD_WEBSOCKET_WITH_PLUGIN_PETER_DOORNBOSH).hasArg(true)
+        Option addWsPluginPeterDoornboshOpt = Option.builder(K_ADD_WEBSOCKET_WITH_PLUGIN_PETER_DOORNBOSH).argName(K_ADD_WEBSOCKET_WITH_PLUGIN_PETER_DOORNBOSH)
+                .hasArg(true)
                 .required(false)
                 .desc("Optional boolean, Manage websocket messages with the JMeter plugin from Peter DOORNBOSH (default false), if true need the plugin from Peter DOORNBOSH to open the generated script")
                 .build();
         options.addOption(addWsPluginPeterDoornboshOpt);
 
-        Option removeHeardersOpt = Option.builder(K_REMOVE_HEADERS_OPT).argName(K_REMOVE_HEADERS_OPT).hasArg(true)
+        Option removeHeardersOpt = Option.builder(K_REMOVE_HEADERS_OPT).argName(K_REMOVE_HEADERS_OPT)
+                .hasArg(true)
                 .required(false)
                 .desc("Remove a list of headers (comma separator, case insensitive), e.g:User-Agent,Pragma,X-TOKEN")
                 .build();
         options.addOption(removeHeardersOpt);
 
-		Option jacksonParserStringMax = Option.builder(K_JACKSON_PARSER_STRING_MAX).argName(K_JACKSON_PARSER_STRING_MAX).hasArg(true)
-			.required(false)
-			.desc("Optional argument to increase (or decrease) the maximum allowed document string for the Jackson Parser library (int value), default is " + K_JACKSON_PARSER_STRING_MAX_DEFAULT)
-			.build();
+		Option jacksonParserStringMax = Option.builder(K_JACKSON_PARSER_STRING_MAX).argName(K_JACKSON_PARSER_STRING_MAX)
+                .hasArg(true)
+                .required(false)
+                .desc("Optional argument to increase (or decrease) the maximum allowed document string for the Jackson Parser library (int value), default is " + K_JACKSON_PARSER_STRING_MAX_DEFAULT)
+                .build();
 		options.addOption(jacksonParserStringMax);
         return options;
     }

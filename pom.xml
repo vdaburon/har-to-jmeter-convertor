@@ -44,22 +44,15 @@
         <url>https://github.com/vdaburon/har-to-jmeter-convertor</url>
         <tag>HEAD</tag>
     </scm>
-    <distributionManagement>
-        <snapshotRepository>
-            <id>ossrh</id>
-            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
-        </snapshotRepository>
-        <repository>
-            <id>ossrh</id>
-            <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-        </repository>
-    </distributionManagement>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <mavenCentralAutoReleaseAfterClose>false</mavenCentralAutoReleaseAfterClose>
+
+        <!-- This Jackson version is available with JMeter 5.6.3, need version >= 2.15 -->
+        <jackson.version>2.16.1</jackson.version>
     </properties>
 
     <dependencies>
@@ -74,12 +67,32 @@
             <version>3.20.0</version>
         </dependency>
 
-        <!-- stay in version 2.x because need jdk 8 but version 3.x need jdk 17 -->
+        <!-- Stay in version 2.x because need jdk 8 but version 3.x need jdk 17 -->
         <dependency>
             <groupId>de.sstoehr</groupId>
             <artifactId>har-reader</artifactId>
             <version>2.5.0</version>
+            <exclusions>
+                <!-- Don't use the version 2.18.1 but same version available with JMeter 5.6.3 -->
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-core</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+
 
         <dependency>
             <groupId>com.jayway.jsonpath</groupId>
@@ -181,9 +194,9 @@
                 </executions>
             </plugin>
             <plugin>
-                <!-- deploy jar in maven central or stagging only : mvn clean deploy
-                 if autoReleaseAfterClose == true then release in maven central;
-                 if autoReleaseAfterClose == false then release in stagging only not maven central
+                <!-- deploy jar in maven central or stagging only : mvn -DmavenCentralAutoReleaseAfterClose=false clean deploy
+                 if mavenCentralAutoReleaseAfterClose == true then release in maven central;
+                 if mavenCentralAutoReleaseAfterClose == false then release in stagging only not maven central
                 -->
                 <groupId>org.sonatype.central</groupId>
                 <artifactId>central-publishing-maven-plugin</artifactId>

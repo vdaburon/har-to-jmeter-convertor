@@ -27,6 +27,7 @@ import de.sstoehr.harreader.model.HarRequest;
 
 import io.github.vdaburon.jmeter.har.external.ManageExternalFile;
 import io.github.vdaburon.jmeter.har.common.TransactionInfo;
+import io.github.vdaburon.jmeter.har.hartransactionmarker.ManageExternalJson;
 import io.github.vdaburon.jmeter.har.websocket.ManageWebSocket;
 import io.github.vdaburon.jmeter.har.websocket.WebSocketRequest;
 
@@ -61,7 +62,7 @@ import java.util.regex.PatternSyntaxException;
 
 public class HarForJMeter {
 
-    public static final String APPLICATION_VERSION = "9.1";
+    public static final String APPLICATION_VERSION = "10.0";
 
     // CLI OPTIONS
     public static final String K_HAR_IN_OPT = "har_in";
@@ -99,7 +100,9 @@ public class HarForJMeter {
         boolean isWebSocketPDoornbosch = false;
         int pageStartNumber = 1;
         int samplerStartNumber = 1;
-        String fileExternalInfo = ""; // csv file name contains infos like : 2024-05-07T07:56:40.513Z;TRANSACTION;welcome_page;start
+        // csv file name contains infos like: 2024-05-07T07:56:40.513Z;TRANSACTION;welcome_page;start or
+        // JSON file name contains infos like: [{"type":"start","name":"bt_add_cart","timestamp":1771835528067},{"type":"end","name":"bt_add_cart","timestamp":1771835658741}]
+        String fileExternalInfo = "";
         String removeHeaders = ""; // a list of http headers to remove with comma separtor, e.g:"User-Agent,Pragma"
 		int jacksonParserStringMax = K_JACKSON_PARSER_STRING_MAX_DEFAULT;
 
@@ -309,7 +312,12 @@ public class HarForJMeter {
 
         if (!fileExternalInfo.isEmpty()) {
             try {
-                listTransactionInfo = ManageExternalFile.createListTransactionInfo(fileExternalInfo);
+                if (fileExternalInfo.endsWith(".csv")) {
+                    listTransactionInfo = ManageExternalFile.createListTransactionInfo(fileExternalInfo);
+                }
+                if (fileExternalInfo.endsWith(".json")) {
+                    listTransactionInfo = ManageExternalJson.createListTransactionInfo(fileExternalInfo);
+                }
             } catch (Exception e) {
                 LOGGER.severe("Can't read file or content : " + fileExternalInfo + ", exception : " + e.toString());
             }
@@ -539,7 +547,7 @@ public class HarForJMeter {
         Option externalFileInfosOpt = Option.builder(K_EXTERNAL_FILE_INFOS).argName(K_EXTERNAL_FILE_INFOS)
                 .hasArg(true)
                 .required(false)
-                .desc("Optional, csv file contains external infos : timestamp transaction name and start or end")
+                .desc("Optional, csv or json file contains external infos : timestamp transaction name and start or end")
                 .build();
         options.addOption(externalFileInfosOpt);
 

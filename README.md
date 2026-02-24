@@ -41,7 +41,7 @@ Tool results : Open the script created and the record.xml in a View Results Tree
 
 
 ### Standard HAR file created with Firefox, Chrome, Edge with external csv file for transaction information
-You could add an external file that contains information about transaction name start and end.
+You could add an external csv file that contains information about transaction name start and end.
 
 ![Step to create script and record from HAR file and external csv file](doc/images/browers_har_external_csv_convertor_script_record.png)
 
@@ -62,6 +62,20 @@ E.g :
 A simple tool named "create-external-file-for-har" create easily this csv file. https://github.com/vdaburon/create-external-file-for-har
 
 You need to add the parameter and value : <code>-external_file_infos c:/Temp/jpetstore.csv</code> to set the csv file to read
+
+### External JSON file created with "HAR Transaction Marker" from LOADMAGIC.AI
+You could add an external json file that contains information about transaction name start and end and timestamp.<br/>
+![Step to create script and record from HAR file and external json file](doc/images/browsers_har_transaction_marker_convertor_script_record.png)
+
+A Chrome plugin call "HAR Transaction Marker" from LOADMAGIC.AI, could generate an external JSON file with Transaction Names, timestamp (EPOC GMT ms), type start or stop<br/>
+![Use the "Har Transaction Marker Chrome Plugin to create Transaction Informations](doc/images/har_transaction_maker_loadmagic_ia.png)
+
+This extension at Chrome Web Store: https://chromewebstore.google.com/search/HAR%20Transaction%20Marker
+
+E.g: JSON content<br/>
+!["JSON file created  with Har Transaction Marker](doc/images/har_transaction_maker_loadmagic_ia_json.png) <br/>
+
+The JSON need at least an array of "name", "type" ("start" or "end") and timestamp format 'EPOC GMT ms' (e.g:1771835429492) and UTF-8 encoded.
 
 ### HAR created with BrowserUp Proxy
 This tool is compatible with Har file generated with BrowserUp Proxy.
@@ -119,7 +133,7 @@ Parameters are :
 * remove_headers, remove a list of http headers (comma separator and case insensitive), e.g:"User-Agent,Pragma,X-TOKEN"
 * page_start_number, set the start page number for partial recording (default 1, must be an integer > 0)
 * sampler_start_number, set the start sampler number for partial recording (default 1, must be an integer > 0)
-* external_file_infos, external csv file contains information about Timestamp, Transaction Name, date start or end.
+* external_file_infos, external csv file or json file contains information about Timestamp, Transaction Name, start or end.
 * ws_with_pdoornbosch boolean, manage websocket messages with the JMeter plugin from Peter DOORNBOSH (default false), if true need the plugin 'WebSocket Samplers by Peter Doornbosch' to open the generated script.
 * jackson_parser_string_max, change default Jackson String length size (default integer size = 20000000), for processing very large JSON
 
@@ -144,7 +158,7 @@ io.github.vdaburon.jmeter.har.HarForJMeter
  -add_result_tree_record &lt;add_result_tree_record&gt;         Optional boolean, add 'View Result Tree' to view the
                                                           record.xml file created (default true), record_out must be not
                                                           empty
- -external_file_infos &lt;external_file_infos&gt;               Optional, csv file contains external infos : timestamp
+ -external_file_infos &lt;external_file_infos&gt;               Optional, csv file or json contains external infos : timestamp
                                                           transaction name and start or end
  -filter_exclude &lt;filter_exclude&gt;                         Optional, regular expression to exclude url
  -filter_include &lt;filter_include&gt;                         Optional, regular expression to include url
@@ -180,11 +194,11 @@ recording.xml -add_result_tree_record true -new_tc_pause 5000 -add_pause true -f
 
 
 <pre>
-C:\apache-jmeter\bin>java -jar har-to-jmeter-convertor-9.1-jar-with-dependencies.jar -har_in "myhar.har" -jmx_out "script_out.jmx" -filter_include "https://mysite.com/.*" -filter_exclude "https://notmysite.com/.*" -add_pause true -new_tc_pause 5000
+C:\apache-jmeter\bin>java -jar har-to-jmeter-convertor-10.0-jar-with-dependencies.jar -har_in "myhar.har" -jmx_out "script_out.jmx" -filter_include "https://mysite.com/.*" -filter_exclude "https://notmysite.com/.*" -add_pause true -new_tc_pause 5000
 </pre>
 
 <pre>
-/var/opt/apache-jmeter/bin>java -jar har-to-jmeter-convertor-9.1-jar-with-dependencies.jar -har_in "myhar.har" -jmx_out "script_out.jmx" -record_out "record.xml" -add_pause true -new_tc_pause 5000
+/var/opt/apache-jmeter/bin>java -jar har-to-jmeter-convertor-10.0--jar-with-dependencies.jar -har_in "myhar.har" -jmx_out "script_out.jmx" -record_out "record.xml" -add_pause true -new_tc_pause 5000
 </pre>
 
 ## Usage Maven
@@ -193,13 +207,15 @@ The maven groupId, artifactId and version, this plugin is in the **Maven Central
 ```xml
 <groupId>io.github.vdaburon</groupId>
 <artifactId>har-to-jmeter-convertor</artifactId>
-<version>9.1</version>
+<version>10.0</version>
 ```
 
 ## License
 Licensed under the Apache License, Version 2.0
 
 ## Versions
+Version 10.0 date 2026-02-23, External file could be a JSON file created with "HAR Transaction Marker" Chrome Plugin from LOADMAGIC.AI or a CSV file.
+
 Version 9.1 date 2026-02-03, Remove parameter use_lrwr_infos because the LoadRunner plugin HarGeneratorChrome for Chrome doesn't work with new Chrome security for plugins.
 
 Version 9.0 date 2026-02-03, Add new parameter <code>-jackson_parser_string_max</code>Add parameter to change default Jackson String length size (default integer size = 20000000) <code>-jackson_parser_string_max 50000000</code>, Pull Request https://github.com/vdaburon/har-to-jmeter-convertor/pull/3

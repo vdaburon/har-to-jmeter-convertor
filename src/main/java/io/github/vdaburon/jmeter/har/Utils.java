@@ -16,6 +16,9 @@
 
 package io.github.vdaburon.jmeter.har;
 
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.charset.Charset;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -34,7 +37,15 @@ public class Utils {
         return sDateIso;
     }
 
-
+    public static String timestampToIsoFormat(long timestamp) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(timestamp);
+        // 2024-05-03T14:30:42.271Z
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        String sDateIso = sdf.format(calendar.getTime());
+        return sDateIso;
+    }
 
     public static String doubleEpocMicroToIsoFormat(double epocSecMicro) {
         // dTimeMicro
@@ -85,5 +96,14 @@ public class Utils {
             mimeType = mimeTypeToExtract;
         }
         return mimeType;
+    }
+
+    public static String readTextFile(String fileName, Charset charset) throws IOException {
+        java.io.RandomAccessFile raf = new RandomAccessFile(fileName, "r");
+        int taille = (int) raf.length();
+        byte buff[] = new byte[taille];
+        raf.readFully(buff);
+        raf.close();
+        return new String(buff, charset.toString());
     }
 }
